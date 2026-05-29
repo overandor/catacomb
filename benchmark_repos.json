@@ -1,0 +1,98 @@
+{
+  "description": "Benchmark repository suite for Catacomb regression testing",
+  "categories": {
+    "obvious_winners": [
+      "tiangolo/fastapi",
+      "tensorflow/tensorflow",
+      "rust-lang/rust",
+      "golang/go",
+      "facebook/react",
+      "vercel/next.js",
+      "microsoft/vscode",
+      "docker/docker",
+      "kubernetes/kubernetes",
+      "nodejs/node"
+    ],
+    "abandoned_gems": [
+      "d3/d3",
+      "moment/moment",
+      "jquery/jquery",
+      "bootstrap/bootstrap",
+      "lodash/lodash"
+    ],
+    "infrastructure_projects": [
+      "nginx/nginx",
+      "redis/redis",
+      "postgres/postgres",
+      "mongodb/mongo",
+      "apache/kafka"
+    ],
+    "toy_projects": [
+      "trekhleb/learn-javascript",
+      "kamranahmedse/developer-roadmap",
+      "github/gitignore",
+      "jlevy/the-art-of-command-line",
+      "sindresorhus/awesome"
+    ],
+    "dead_startups": [
+      "openai/gym",
+      "uber/pyro",
+      "airbnb/javascript",
+      "alibaba/arthas",
+      "Netflix/zuul"
+    ],
+    "well_built_dormant": [
+      "ant-design/ant-design",
+      "apache/spark",
+      "llvm/llvm-project",
+      "gcc-mirror/gcc",
+      "vim/vim"
+    ],
+    "popular_useless": [
+      "sharkdp/fastfetch",
+      "ClementTsang/bottom",
+      "ajeetdsouza/zoxide",
+      "starship/starship",
+      "eza-community/eza"
+    ],
+    "hidden_gems": [
+      "mitsuhiko/uvicorn",
+      "encode/httpx",
+      "samuelcolvin/pydantic",
+      "pallets/flask",
+      "python/cpython"
+    ]
+  },
+  "expected_rankings": {
+    "obvious_winners": "Should rank high due to proven track record, large community, and infrastructure importance",
+    "abandoned_gems": "Should rank medium-high due to historical significance but abandonment signals",
+    "infrastructure_projects": "Should rank high due to critical infrastructure and ecosystem importance",
+    "toy_projects": "Should rank low-medium as they're educational, not intervention targets",
+    "dead_startups": "Should rank medium - abandoned but with potential for revival",
+    "well_built_dormant": "Should rank high - high quality but dormant = intervention opportunity",
+    "popular_useless": "Should rank low - popular but not intervention targets",
+    "hidden_gems": "Should rank high - underexposed high-quality projects"
+  },
+  "test_cases": [
+    {
+      "name": "FastAPI vs random CRUD",
+      "hypothesis": "FastAPI should rank significantly higher than a typical CRUD tutorial repo",
+      "repos": ["tiangolo/fastapi", "flask/flask", "djangoproject/django"]
+    },
+    {
+      "name": "Bun vs abandoned homework",
+      "hypothesis": "Bun should rank higher than abandoned student projects",
+      "repos": ["oven-sh/bun", "denoland/deno", "nodejs/node"]
+    },
+    {
+      "name": "Dormant quality vs popular useless",
+      "hypothesis": "Well-built dormant projects should rank higher than popular but non-interventionable repos",
+      "repos": ["ant-design/ant-design", "starship/starship", "sharkdp/fastfetch"]
+    },
+    {
+      "name": "Hidden gems vs obvious winners",
+      "hypothesis": "Hidden gems should rank competitively with obvious winners due to intervention potential",
+      "repos": ["mitsuhiko/uvicorn", "encode/httpx", "samuelcolvin/pydantic", "tiangolo/fastapi"]
+    }
+  ]
+}

@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb - Deterministic Agent Stack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        .score-bar {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Components
+        function Header({ currentView, setCurrentView }) {
+            return (
+                <header className="border-b border-gray-700/50 backdrop-blur-sm bg-black/20">
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                                    Catacomb
+                                </h1>
+                                <p className="text-gray-400 text-sm mt-1">Innovation Allocation Engine</p>
+                            </div>
+                            <nav className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentView('discover')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'discover'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Quality
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('trending')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'trending'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Trending
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('promising')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'promising'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Promising
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('intervention')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'intervention'
+                                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Intervention
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('swipe')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'swipe'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Swipe
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('search')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'search'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Search
+                                </button>
+                                <div className="flex items-center gap-2 ml-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="text-sm text-gray-400">Live</span>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
+                </header>
+            );
+        }
+
+        function SearchCard({ onSearch, loading }) {
+            const [mode, setMode] = useState('topic');
+            const [query, setQuery] = useState('');
+            const [limit, setLimit] = useState(10);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (query.trim()) {
+                    onSearch(mode, query, limit);
+                }
+            };
+
+            return (
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+                    <div className="flex gap-2 mb-4">
+                        {['topic', 'user', 'repo'].map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => setMode(m)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    mode === m
+                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                        : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                }`}
+                            >
+                                {m.charAt(0).toUpperCase() + m.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="flex gap-3">
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder={mode === 'repo' ? 'owner/repo' : `Search by ${mode}...`}
+                            className="flex-1 bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                        />
+                        <input
+                            type="number"
+                            value={limit}
+                            onChange={(e) => setLimit(Math.min(50, Math.max(1, parseInt(e.target.value) || 10)))}
+                            min="1"
+                            max="50"
+                            className="w-20 bg-gray-900/50 border border-gray-600 rounded-lg px-3 py-3 text-white focus:outline-none focus:border-cyan-500"
+                        />
+                        <button
+                            type="submit"
+                            disabled={loading || !query.trim()}
+                            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg font-medium hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            {loading ? 'Analyzing...' : 'Analyze'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        function ResultCard({ result, rank }) {
+            const [expanded, setExpanded] = React.useState(false);
+
+            if (result.error) {
+                return (
+                    <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-red-400">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-medium">{result.repo}</span>
+                        </div>
+                        <p className="text-red-300 text-sm mt-1">{result.error}</p>
+                    </div>
+                );
+            }
+
+            const analysis = result.analysis || {};
+            const bestIntervention = analysis.best_intervention || {};
+            const repoData = result.repo_data || {};
+            const score = analysis.intervention_score || 0;
+            const evidence = analysis.evidence || {};
+            const opportunity = analysis.opportunity || {};
+
+            const getScoreColor = (s) => {
+                if (s >= 70) return 'from-green-500 to-emerald-500';
+                if (s >= 50) return 'from-yellow-500 to-orange-500';
+                return 'from-red-500 to-pink-500';
+            };
+
+            return (
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 card-hover transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl font-bold text-cyan-400">#{rank}</span>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white">{result.repo}</h3>
+                                    <p className="text-gray-400 text-sm">{repoData.description || 'No description'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className={`text-3xl font-bold bg-gradient-to-r ${getScoreColor(score)} bg-clip-text text-transparent`}>
+                                {score.toFixed(1)}
+                            </div>
+                            <p className="text-gray-400 text-xs">Intervention Score</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="bg-gray-900/50 rounded-lg p-3">
+                            <p className="text-gray-400 text-xs mb-1">Stars</p>
+                            <p className="text-white font-semibold">{repoData.stars || 0}</p>
+                        </div>
+                        <div className="bg-gray-900/50 rounded-lg p-3">
+                            <p className="text-gray-400 text-xs mb-1">Forks</p>
+                            <p className="text-white font-semibold">{repoData.forks || 0}</p>
+                        </div>
+                        <div className="bg-gray-900/50 rounded-lg p-3">
+                            <p className="text-gray-400 text-xs mb-1">Language</p>
+                            <p className="text-white font-semibold">{repoData.language || 'N/A'}</p>
+                        </div>
+                    </div>
+
+                    {bestIntervention.name && (
+                        <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg p-4 border border-cyan-500/20">
+                            <p className="text-cyan-400 text-sm font-medium mb-2">Best Intervention</p>
+                            <h4 className="text-white font-semibold mb-2">{bestIntervention.name}</h4>
+                            <div className="grid grid-cols-3 gap-3 text-sm">
+                                <div>
+                                    <p className="text-gray-400">Effort</p>
+                                    <p className="text-white font-medium">{bestIntervention.effort_days || 0} days</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Probability</p>
+                                    <p className="text-white font-medium">{((bestIntervention.probability || 0) * 100).toFixed(0)}%</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Upside</p>
+                                    <p className="text-white font-medium">{((bestIntervention.upside || 0) * 100).toFixed(0)}%</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between">
+                        <p className="text-gray-500 text-xs font-mono">
+                            Hash: {analysis.evidence?.scanner?.hash?.slice(0, 16) || 'N/A'}...
+                        </p>
+                        <button
+                            onClick={() => setExpanded(!expanded)}
+                            className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                        >
+                            {expanded ? 'Hide Details' : 'Show Evidence'}
+                        </button>
+                    </div>
+
+                    {expanded && (
+                        <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-4">
+                            {/* Evidence Layer */}
+                            <div>
+                                <h5 className="text-cyan-400 text-sm font-medium mb-2">Evidence Layer</h5>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    {evidence.scanner && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Scanner</p>
+                                            <p className="text-white font-medium">{evidence.scanner.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {evidence.buildability && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Buildability</p>
+                                            <p className="text-white font-medium">{evidence.buildability.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {evidence.code_quality && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Code Quality</p>
+                                            <p className="text-white font-medium">{evidence.code_quality.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {evidence.language && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Language</p>
+                                            <p className="text-white font-medium">{evidence.language.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Opportunity Layer */}
+                            <div>
+                                <h5 className="text-cyan-400 text-sm font-medium mb-2">Opportunity Layer</h5>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    {opportunity.novelty && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Novelty</p>
+                                            <p className="text-white font-medium">{opportunity.novelty.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {opportunity.market_demand && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Market Demand</p>
+                                            <p className="text-white font-medium">{opportunity.market_demand.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {opportunity.revival && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Revival</p>
+                                            <p className="text-white font-medium">{opportunity.revival.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                    {opportunity.trajectory && (
+                                        <div className="bg-gray-900/50 rounded p-2">
+                                            <p className="text-gray-400">Trajectory</p>
+                                            <p className="text-white font-medium">{opportunity.trajectory.score?.toFixed(1) || 'N/A'}/100</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Key Evidence */}
+                            <div>
+                                <h5 className="text-cyan-400 text-sm font-medium mb-2">Key Evidence</h5>
+                                <div className="bg-gray-900/50 rounded p-3 text-xs space-y-1">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Stars:</span>
+                                        <span className="text-white">{repoData.stars || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Forks:</span>
+                                        <span className="text-white">{repoData.forks || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Open Issues:</span>
+                                        <span className="text-white">{repoData.open_issues || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Commits (last year):</span>
+                                        <span className="text-white">{repoData.commits_last_year || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Contributors:</span>
+                                        <span className="text-white">{repoData.contributors || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">License:</span>
+                                        <span className="text-white">{repoData.license || 'None'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Has README:</span>
+                                        <span className="text-white">{repoData.has_readme ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Has CI:</span>
+                                        <span className="text-white">{repoData.has_ci ? 'Yes' : 'No'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function ResultsList({ results, loading }) {
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            if (!results || results.length === 0) {
+                return (
+                    <div className="text-center py-12">
+                        <svg className="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <p className="text-gray-400">Search for repositories to see analysis results</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-4">
+                    {results.map((result, index) => (
+                        <ResultCard key={result.repo || index} result={result} rank={index + 1} />
+                    ))}
+                </div>
+            );
+        }
+
+        function DiscoverView() {
+            const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/discover/quality')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRepos(data.results || []);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load quality repos:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold text-white mb-6">High-Value Repositories</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {repos.map((item, index) => (
+                            <div key={item.repo} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 card-hover transition-all">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-white">{item.repo}</h3>
+                                        <p className="text-gray-400 text-sm mt-1">{item.repo_data.description || 'No description'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-2xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
+                                            ${item.valuation.total_value_usd.toLocaleString()}
+                                        </div>
+                                        <p className="text-gray-400 text-xs">Estimated Value</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <p className="text-gray-400 text-xs mb-1">Stars</p>
+                                        <p className="text-white font-semibold">{item.repo_data.stars || 0}</p>
+                                    </div>
+                                    <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <p className="text-gray-400 text-xs mb-1">Language</p>
+                                        <p className="text-white font-semibold">{item.repo_data.language || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-400">Confidence: {(item.valuation.confidence * 100).toFixed(0)}%</span>
+                                    <span className="text-cyan-400">#{index + 1}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function TrendingView() {
+            const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/discover/trending')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRepos(data.results || []);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load trending repos:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold text-white mb-6">Trending Repositories</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {repos.map((item, index) => (
+                            <div key={item.repo} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 card-hover transition-all">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-white">{item.repo}</h3>
+                                        <p className="text-gray-400 text-sm mt-1">{item.repo_data.description || 'No description'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                                            {item.trending_score.toFixed(2)}
+                                        </div>
+                                        <p className="text-gray-400 text-xs">Trending Score</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <p className="text-gray-400 text-xs mb-1">Stars</p>
+                                        <p className="text-white font-semibold">{item.repo_data.stars || 0}</p>
+                                    </div>
+                                    <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <p className="text-gray-400 text-xs mb-1">Commits/Year</p>
+                                        <p className="text-white font-semibold">{item.repo_data.commits_last_year || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-400">Value: ${item.valuation.total_value_usd.toLocaleString()}</span>
+                                    <span className="text-orange-400">#{index + 1}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function PromisingView() {
+            const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/discover/promising')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRepos(data.results || []);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load promising repos:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Innovation Alpha</h2>
+                    <p className="text-gray-400 mb-6">Hidden gems: Expected Future Value - Current Recognition (positive alpha only)</p>
+                    {repos.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-400">No undervalued assets found in current dataset</p>
+                            <p className="text-gray-500 text-sm mt-2">Try analyzing smaller or newer repositories</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {repos.map((item, index) => (
+                                <div key={item.repo} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30 card-hover transition-all">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-semibold text-white">{item.repo}</h3>
+                                            <p className="text-gray-400 text-sm mt-1">{item.repo_data.description || 'No description'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                                            +{item.innovation_alpha.toFixed(2)}
+                                        </div>
+                                            <p className="text-gray-400 text-xs">Innovation Alpha</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-3 mb-4">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-400">Expected Future Value</span>
+                                            <span className="text-green-400">{(item.expected_future_value * 100).toFixed(0)}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                            <div className="bg-green-500 h-1.5 rounded-full" style={{width: `${item.expected_future_value * 100}%`}}></div>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-400">Current Recognition</span>
+                                            <span className="text-red-400">{(item.current_recognition * 100).toFixed(0)}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                            <div className="bg-red-500 h-1.5 rounded-full" style={{width: `${item.current_recognition * 100}%`}}></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Stars</p>
+                                            <p className="text-white font-semibold">{item.repo_data.stars || 0}</p>
+                                        </div>
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Value</p>
+                                            <p className="text-white font-semibold">${item.valuation.total_value_usd.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-purple-400">Undervalued opportunity</span>
+                                        <span className="text-purple-400">#{index + 1}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function InterventionView() {
+            const [opportunities, setOpportunities] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/discover/promising')
+                    .then(res => res.json())
+                    .then(data => {
+                        // Transform repos into intervention opportunities (only positive alpha)
+                        const transformed = (data.results || [])
+                            .filter(item => item.innovation_alpha > 0)
+                            .map(item => {
+                            const analysis = item.analysis || {};
+                            const bestIntervention = analysis.best_intervention || {
+                                name: 'Documentation Overhaul',
+                                effort_days: 7,
+                                probability: 0.75,
+                                upside: 0.5
+                            };
+                            
+                            return {
+                                asset: item.repo,
+                                description: item.repo_data.description || 'No description',
+                                best_intervention: bestIntervention.name,
+                                effort: bestIntervention.effort_days,
+                                probability: bestIntervention.probability,
+                                expected_value: bestIntervention.upside,
+                                innovation_alpha: item.innovation_alpha,
+                                current_value: item.valuation.total_value_usd
+                            };
+                        });
+                        setOpportunities(transformed);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load interventions:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Intervention Opportunities</h2>
+                    <p className="text-gray-400 mb-6">Ranking undervalued opportunities (positive Innovation Alpha only)</p>
+                    {opportunities.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-400">No undervalued intervention opportunities found</p>
+                            <p className="text-gray-500 text-sm mt-2">Blue-chip assets (Rust, TensorFlow, etc.) are already recognized</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {opportunities.map((opp, index) => (
+                                <div key={opp.asset} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30 card-hover transition-all">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-semibold text-white">{opp.asset}</h3>
+                                            <p className="text-gray-400 text-sm mt-1">{opp.description}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+                                                +{opp.innovation_alpha.toFixed(2)}
+                                            </div>
+                                            <p className="text-gray-400 text-xs">Innovation Alpha</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-yellow-500/10 rounded-lg p-4 mb-4 border border-yellow-500/20">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-yellow-400 font-semibold">Best Intervention</span>
+                                            <span className="text-gray-400 text-sm">{opp.best_intervention}</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4 mt-3">
+                                            <div>
+                                                <p className="text-gray-400 text-xs mb-1">Effort</p>
+                                                <p className="text-white font-semibold">{opp.effort} days</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 text-xs mb-1">Probability</p>
+                                                <p className="text-white font-semibold">{(opp.probability * 100).toFixed(0)}%</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 text-xs mb-1">Expected Outcome</p>
+                                                <p className="text-white font-semibold">{(opp.expected_value * 100).toFixed(0)}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-400">Current Value: ${opp.current_value.toLocaleString()}</span>
+                                        <span className="text-yellow-400">#{index + 1}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function SwipeView() {
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/discover/promising')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRepos(data.results || []);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load repos:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            const handleSwipe = (direction) => {
+                setCurrentIndex(prev => prev + 1);
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center h-96">
+                        <div className="text-gray-400">Loading repositories...</div>
+                    </div>
+                );
+            }
+
+            if (currentIndex >= repos.length) {
+                return (
+                    <div className="flex items-center justify-center h-96">
+                        <div className="text-gray-400">No more repositories to review</div>
+                    </div>
+                );
+            }
+
+            const currentRepo = repos[currentIndex];
+
+            return (
+                <div className="max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-white mb-6 text-center">Swipe to Discover</h2>
+                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50">
+                        <div className="text-center mb-6">
+                            <h3 className="text-2xl font-bold text-white mb-2">{currentRepo.repo}</h3>
+                            <p className="text-gray-400">{currentRepo.repo_data.description || 'No description'}</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg p-6 mb-6 border border-green-500/20">
+                            <div className="text-center">
+                                <div className="text-4xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent mb-2">
+                                    ${currentRepo.valuation.total_value_usd.toLocaleString()}
+                                </div>
+                                <p className="text-gray-400">Estimated Value</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className="bg-gray-900/50 rounded-lg p-4 text-center">
+                                <p className="text-2xl font-bold text-white">{currentRepo.repo_data.stars || 0}</p>
+                                <p className="text-gray-400 text-sm">Stars</p>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-4 text-center">
+                                <p className="text-2xl font-bold text-white">{currentRepo.repo_data.forks || 0}</p>
+                                <p className="text-gray-400 text-sm">Forks</p>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-4 text-center">
+                                <p className="text-2xl font-bold text-white">{currentRepo.repo_data.contributors || 0}</p>
+                                <p className="text-gray-400 text-sm">Contributors</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => handleSwipe('left')}
+                                className="flex-1 py-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-medium hover:bg-red-500/30 transition-all"
+                            >
+                                Pass
+                            </button>
+                            <button
+                                onClick={() => handleSwipe('right')}
+                                className="flex-1 py-4 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 font-medium hover:bg-green-500/30 transition-all"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-center text-gray-400 mt-4">{currentIndex + 1} of {repos.length}</p>
+                </div>
+            );
+        }
+
+        function App() {
+            const [currentView, setCurrentView] = useState('discover');
+            const [results, setResults] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const handleSearch = async (mode, query, limit) => {
+                setLoading(true);
+                setError(null);
+                setResults(null);
+
+                // Input validation
+                if (!query || query.trim() === '') {
+                    setError('Please enter a search query');
+                    setLoading(false);
+                    return;
+                }
+
+                if (mode === 'repo') {
+                    const parts = query.split('/');
+                    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+                        setError('Invalid repository format. Use: owner/repo');
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                try {
+                    let url;
+                    let options = {
+                        method: mode === 'repo' ? 'GET' : 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    };
+
+                    if (mode === 'repo') {
+                        const [owner, repo] = query.split('/');
+                        url = `/api/analyze/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+                    } else if (mode === 'topic') {
+                        url = '/api/analyze/topic';
+                        options.body = JSON.stringify({ topic: query.trim(), limit });
+                    } else {
+                        url = '/api/analyze/user';
+                        options.body = JSON.stringify({ username: query.trim(), limit });
+                    }
+
+                    const response = await fetch(url, options);
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Analysis failed');
+                    }
+
+                    setResults(mode === 'repo' ? [data] : data.results);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <Header currentView={currentView} setCurrentView={setCurrentView} />
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        {currentView === 'discover' && <DiscoverView />}
+                        {currentView === 'trending' && <TrendingView />}
+                        {currentView === 'promising' && <PromisingView />}
+                        {currentView === 'intervention' && <InterventionView />}
+                        {currentView === 'swipe' && <SwipeView />}
+                        {currentView === 'search' && (
+                            <>
+                                <div className="mb-8">
+                                    <SearchCard onSearch={handleSearch} loading={loading} />
+                                </div>
+
+                                {error && (
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                                        <p className="text-red-400 font-medium mb-2">{error}</p>
+                                        {error.includes('rate limit') && (
+                                            <p className="text-red-300 text-sm">
+                                                GitHub API rate limit exceeded. Set GITHUB_TOKEN environment variable to increase limits:
+                                                <code className="block mt-2 bg-black/30 px-2 py-1 rounded">export GITHUB_TOKEN=your_token_here</code>
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                <ResultsList results={results} loading={loading} />
+                            </>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

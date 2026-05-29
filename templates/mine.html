@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Intervention Miner - Catacomb</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .nav { display: flex; gap: 10px; }
+        .nav a { color: #888; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s; }
+        .nav a:hover { color: #fff; background: #1a1a1a; }
+        .nav a.active { color: #fff; background: #2a2a2a; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .card h5 { font-size: 18px; margin-bottom: 10px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #2a2a2a; border-radius: 6px; background: #0a0a0a; color: #e0e0e0; margin-bottom: 15px; }
+        .form-text { font-size: 12px; color: #888; margin-top: -10px; margin-bottom: 15px; }
+        .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: #0066ff; color: #fff; }
+        .btn-primary:hover { background: #0052cc; }
+        .btn-primary:disabled { background: #2a2a2a; color: #888; cursor: not-allowed; }
+        .progress { height: 25px; background: #2a2a2a; border-radius: 6px; overflow: hidden; }
+        .progress-bar { height: 100%; background: #0066ff; transition: width 0.3s; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; }
+        .list-unstyled { list-style: none; padding: 0; }
+        .list-unstyled li { padding: 4px 0; color: #888; }
+        .spinner-border { display: inline-block; width: 1rem; height: 1rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Catacomb</h1>
+            <nav class="nav">
+                <a href="/">Dashboard</a>
+                <a href="/capture">Capture</a>
+                <a href="/quick_capture">Quick</a>
+                <a href="/mine" class="active">Mine</a>
+                <a href="/leaderboard">Leaderboard</a>
+                <a href="/stats">Stats</a>
+            </nav>
+        </div>
+
+        <h2>GitHub Intervention Miner</h2>
+        
+        <div class="card">
+            <h5>Mine Interventions from GitHub</h5>
+            <p style="color: #888; margin-bottom: 20px;">
+                Extract intervention traces from GitHub repositories including merged PRs, releases, and issue closures.
+                The miner will classify interventions and seed them into the Outcome Ledger.
+            </p>
+            
+            <form id="mineForm" method="POST" action="{{ url_for('start_mining') }}">
+                <div style="margin-bottom: 20px;">
+                    <label for="github_token" class="form-label">GitHub Token</label>
+                    <input type="password" class="form-control" id="github_token" name="github_token" required placeholder="ghp_...">
+                    <div class="form-text">
+                        Required for authenticated API access. Your token will only be used for this session.
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="repos" class="form-label">Repositories (optional)</label>
+                    <input type="text" class="form-control" id="repos" name="repos" placeholder="owner/repo, owner/repo">
+                    <div class="form-text">
+                        Comma-separated list of repositories. Leave empty to use default high-activity repos.
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="limit_per_repo" class="form-label">Interventions per Repo</label>
+                    <input type="number" class="form-control" id="limit_per_repo" name="limit_per_repo" value="20" min="1" max="100">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="startBtn" {% if mining_status.in_progress %}disabled{% endif %}>
+                    {% if mining_status.in_progress %}
+                        <span class="spinner-border"></span>
+                        Mining in Progress...
+                    {% else %}
+                        Start Mining
+                    {% endif %}
+                </button>
+            </form>
+        </div>
+        
+        {% if mining_status.in_progress or mining_status.message %}
+        <div class="card">
+            <h5>Mining Status</h5>
+            
+            <div class="progress" style="margin-bottom: 15px;">
+                <div id="progressBar" class="progress-bar" 
+                     style="width: {% if mining_status.total > 0 %}{{ (mining_status.progress / mining_status.total * 100)|round }}{% else %}0{% endif }}%">
+                    {% if mining_status.total > 0 %}{{ mining_status.progress }} / {{ mining_status.total }}{% endif %}
+                </div>
+            </div>
+            
+            <p id="statusMessage">
+                <strong>Status:</strong> {{ mining_status.message }}
+            </p>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <h5>Default Repositories</h5>
+            <ul class="list-unstyled">
+                <li>vercel/next.js</li>
+                <li>facebook/react</li>
+                <li>vuejs/vue</li>
+                <li>sveltejs/svelte</li>
+                <li>microsoft/typescript</li>
+                <li>golang/go</li>
+                <li>rust-lang/rust</li>
+                <li>docker/docker</li>
+                <li>kubernetes/kubernetes</li>
+                <li>tensorflow/tensorflow</li>
+                <li>pytorch/pytorch</li>
+                <li>openai/openai-python</li>
+                <li>langchain-ai/langchain</li>
+                <li>supabase/supabase</li>
+                <li>prisma/prisma</li>
+            </ul>
+        </div>
+    </div>
+
+<script>
+{% if mining_status.in_progress %}
+setInterval(function() {
+    fetch('/mine/status')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.in_progress) {
+                var progressBar = document.getElementById('progressBar');
+                var total = data.total || 1;
+                var progress = data.progress || 0;
+                var percentage = (progress / total * 100).toFixed(0);
+                
+                progressBar.style.width = percentage + '%';
+                progressBar.textContent = progress + ' / ' + total;
+                
+                document.getElementById('statusMessage').innerHTML = '<strong>Status:</strong> ' + data.message;
+            } else {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').innerHTML = 'Start Mining';
+                document.getElementById('statusMessage').innerHTML = '<strong>Status:</strong> ' + data.message;
+            }
+        });
+}, 2000);
+{% endif %}
+
+document.getElementById('mineForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var btn = document.getElementById('startBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border"></span> Starting...';
+    
+    var formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            btn.disabled = false;
+            btn.innerHTML = 'Start Mining';
+        } else {
+            btn.innerHTML = '<span class="spinner-border"></span> Mining in Progress...';
+            
+            setInterval(function() {
+                fetch('/mine/status')
+                    .then(function(response) { return response.json(); })
+                    .then(function(statusData) {
+                        if (statusData.in_progress) {
+                            var progressBar = document.getElementById('progressBar');
+                            var total = statusData.total || 1;
+                            var progress = statusData.progress || 0;
+                            var percentage = (progress / total * 100).toFixed(0);
+                            
+                            progressBar.style.width = percentage + '%';
+                            progressBar.textContent = progress + ' / ' + total;
+                            
+                            document.getElementById('statusMessage').innerHTML = '<strong>Status:</strong> ' + statusData.message;
+                        } else {
+                            btn.disabled = false;
+                            btn.innerHTML = 'Start Mining';
+                            document.getElementById('statusMessage').innerHTML = '<strong>Status:</strong> ' + statusData.message;
+                        }
+                    });
+            }, 2000);
+        }
+    })
+    .catch(function(error) {
+        alert('Error: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = 'Start Mining';
+    });
+});
+</script>
+</body>
+</html>

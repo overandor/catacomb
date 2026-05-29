@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb - Leaderboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { margin-bottom: 30px; }
+        .header h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+        .nav { display: flex; gap: 10px; margin-bottom: 30px; }
+        .nav a { color: #888; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s; }
+        .nav a:hover { color: #fff; background: #1a1a1a; }
+        .nav a.active { color: #fff; background: #2a2a2a; }
+        .section { margin-bottom: 40px; }
+        .section h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #fff; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #2a2a2a; }
+        .table th { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .table tr:hover { background: #1a1a1a; }
+        .rank { width: 50px; text-align: center; font-weight: 600; }
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+        .elo { font-weight: 600; color: #4ade80; }
+        .win-rate { color: #888; }
+        .back { display: inline-block; margin-bottom: 20px; color: #888; text-decoration: none; }
+        .back:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>Leaderboard</h1>
+        </div>
+
+        <nav class="nav">
+            <a href="/">Dashboard</a>
+            <a href="/capture">Capture</a>
+            <a href="/quick_capture">Quick</a>
+            <a href="/leaderboard" class="active">Leaderboard</a>
+            <a href="/stats">Stats</a>
+        </nav>
+
+        <div class="section">
+            <h2>Top Developers (Innovation Elo)</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="rank">#</th>
+                        <th>Developer</th>
+                        <th>Elo Rating</th>
+                        <th>Games</th>
+                        <th>Win Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dev in developers %}
+                    <tr>
+                        <td class="rank rank-{{ loop.index }}">{{ loop.index }}</td>
+                        <td>{{ dev.entity_id }}</td>
+                        <td class="elo">{{ dev.rating }}</td>
+                        <td>{{ dev.games_played }}</td>
+                        <td class="win-rate">{{ (dev.win_rate * 100)|round(1) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Top Intervention Types</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="rank">#</th>
+                        <th>Intervention</th>
+                        <th>Elo Rating</th>
+                        <th>Games</th>
+                        <th>Win Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for intervention in interventions %}
+                    <tr>
+                        <td class="rank rank-{{ loop.index }}">{{ loop.index }}</td>
+                        <td>{{ intervention.entity_id }}</td>
+                        <td class="elo">{{ intervention.rating }}</td>
+                        <td>{{ intervention.games_played }}</td>
+                        <td class="win-rate">{{ (intervention.win_rate * 100)|round(1) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

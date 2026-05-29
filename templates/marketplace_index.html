@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb Marketplace</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .header h1 { font-size: 32px; font-weight: 700; }
+        .nav { display: flex; gap: 10px; }
+        .nav a { color: #888; text-decoration: none; padding: 10px 20px; border-radius: 8px; transition: all 0.2s; }
+        .nav a:hover { color: #fff; background: #1a1a1a; }
+        .nav a.active { color: #fff; background: #2a2a2a; }
+        .section { margin-bottom: 40px; }
+        .section h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #fff; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #1a1a1a; padding: 24px; border-radius: 12px; border: 1px solid #2a2a2a; transition: all 0.2s; }
+        .card:hover { border-color: #3a3a3a; transform: translateY(-2px); }
+        .card h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #fff; }
+        .card .meta { font-size: 13px; color: #888; margin-bottom: 8px; }
+        .card .value { font-size: 24px; font-weight: 700; color: #4ade80; margin-bottom: 8px; }
+        .card .law { font-size: 14px; color: #60a5fa; margin-bottom: 8px; }
+        .card .elo { font-size: 14px; color: #fbbf24; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #2a2a2a; color: #888; }
+        .badge-verified { background: #1a3a1a; color: #4ade80; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: #1a1a1a; padding: 20px; border-radius: 8px; }
+        .stat-card h3 { font-size: 12px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 28px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Catacomb Marketplace</h1>
+            <nav class="nav">
+                <a href="/" class="active">Home</a>
+                <a href="/interventions">Interventions</a>
+                <a href="/developers">Developers</a>
+                <a href="/laws">Laws</a>
+                <a href="/verify">Verify</a>
+                <a href="/leaderboard">Leaderboard</a>
+                <a href="/stats">Stats</a>
+            </nav>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Verified Interventions</h3>
+                <div class="value">{{ featured|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Top Developers</h3>
+                <div class="value">{{ top_developers|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Reusable Laws</h3>
+                <div class="value">{{ laws|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Marketplace Status</h3>
+                <div class="value">Active</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Featured Interventions</h2>
+            <div class="card-grid">
+                {% for record in featured %}
+                <div class="card">
+                    <h3>{{ record.asset_name }}</h3>
+                    <div class="meta">{{ record.intervention_type }}</div>
+                    <div class="meta">by {{ record.developer_username }}</div>
+                    <div class="value">{{ record.predicted_value }}</div>
+                    <div class="meta">Predicted vs Actual</div>
+                    {% if record.outcome_metrics %}
+                    <div class="meta">Actual: {{ record.outcome_metrics.get('actual_value', 'N/A') }}</div>
+                    {% endif %}
+                    <span class="badge badge-verified">Verified</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Top Developers</h2>
+            <div class="card-grid">
+                {% for dev in top_developers[:4] %}
+                <div class="card">
+                    <h3>{{ dev.entity_id }}</h3>
+                    <div class="elo">Elo: {{ dev.rating }}</div>
+                    <div class="meta">{{ dev.games_played }} interventions</div>
+                    <div class="meta">Win Rate: {{ (dev.win_rate * 100)|round(1) }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Reusable Laws</h2>
+            <div class="card-grid">
+                {% for law in laws[:4] %}
+                <div class="card">
+                    <div class="law">{{ law.law }}</div>
+                    <div class="meta">Strength: {{ law.strength|round(2) }}</div>
+                    <div class="meta">Samples: {{ law.pattern.sample_count }}</div>
+                    <div class="meta">Success Rate: {{ (law.pattern.success_rate * 100)|round(1) }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb - Full Capture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { margin-bottom: 30px; }
+        .header h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+        .header p { color: #888; font-size: 14px; }
+        .form { background: #1a1a1a; padding: 30px; border-radius: 8px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; color: #888; margin-bottom: 8px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #0066ff;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .btn { width: 100%; padding: 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: #0066ff; color: #fff; }
+        .btn-primary:hover { background: #0052cc; }
+        .flash { padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; }
+        .flash-success { background: #1a3a1a; color: #4ade80; }
+        .flash-error { background: #3a1a1a; color: #f87171; }
+        .back { display: inline-block; margin-bottom: 20px; color: #888; text-decoration: none; }
+        .back:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>Full Capture</h1>
+            <p>Complete intervention capture with all details</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Asset ID</label>
+                    <input type="text" name="asset_id" placeholder="e.g., owner/repo" required>
+                </div>
+                <div class="form-group">
+                    <label>Asset Type</label>
+                    <select name="asset_type" required>
+                        <option value="github_repo">GitHub Repo</option>
+                        <option value="huggingface_model">HuggingFace Model</option>
+                        <option value="npm_package">npm Package</option>
+                        <option value="pypi_package">PyPI Package</option>
+                        <option value="crates_io_package">crates.io Package</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Asset Name</label>
+                    <input type="text" name="asset_name" placeholder="e.g., next.js" required>
+                </div>
+                <div class="form-group">
+                    <label>Developer ID</label>
+                    <input type="text" name="developer_id" placeholder="e.g., github:alice" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Developer Username</label>
+                <input type="text" name="developer_username" placeholder="e.g., alice" required>
+            </div>
+
+            <div class="form-group">
+                <label>Intervention Type</label>
+                <select name="intervention_type" required>
+                    <option value="">Select intervention...</option>
+                    <option value="Documentation Overhaul">Documentation Overhaul</option>
+                    <option value="Build System Modernization">Build System Modernization</option>
+                    <option value="Feature Expansion">Feature Expansion</option>
+                    <option value="SaaS Conversion">SaaS Conversion</option>
+                    <option value="AI Integration">AI Integration</option>
+                    <option value="Infrastructure Repositioning">Infrastructure Repositioning</option>
+                    <option value="Community Building">Community Building</option>
+                    <option value="Rust WASM Layer">Rust WASM Layer</option>
+                    <option value="AI Agent Wrapper">AI Agent Wrapper</option>
+                    <option value="Commercial API">Commercial API</option>
+                    <option value="Package Ecosystem">Package Ecosystem</option>
+                    <option value="Open-Core Company">Open-Core Company</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Intervention Description</label>
+                <textarea name="intervention_description" rows="3" placeholder="Describe the intervention..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Planned Effort (days)</label>
+                    <input type="number" name="planned_effort_days" placeholder="e.g., 14" required>
+                </div>
+                <div class="form-group">
+                    <label>Predicted Value (0-100)</label>
+                    <input type="number" name="predicted_value" placeholder="e.g., 75" step="0.1" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Predicted Probability (0-1)</label>
+                    <input type="number" name="predicted_probability" placeholder="e.g., 0.7" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label>Predicted Risk (0-1)</label>
+                    <input type="number" name="predicted_risk" placeholder="e.g., 0.3" step="0.1" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Before State (JSON)</label>
+                <textarea name="before_state" rows="5" placeholder='{"stars": 100, "forks": 10, ...}'></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Capture Intervention</button>
+        </form>
+    </div>
+</body>
+</html>
