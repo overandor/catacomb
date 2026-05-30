@@ -19,12 +19,18 @@ from value_delta import ValueDeltaCalculator
 from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
+from intervention_predictor import get_predictor, InterventionFeatures
 
 # Production imports
 import re
 from decimal import Decimal
 from flask.json.provider import DefaultJSONProvider
 from collateral_registry import CollateralRegistry
+from asset_improvement_agent import AssetImprovementAgent, AssetRecord, AssetType
+from collateral_packet import RiskRegister
+from lender_packet import LenderPacketGenerator
+from buyer_packet import BuyerPacketGenerator
+from developer_asset_underwriter import DeveloperAssetUnderwriter
 
 # Configure logging
 logging.basicConfig(
@@ -479,6 +485,80 @@ def get_training_data():
     try:
         dataset = outcome_ledger.get_training_dataset()
         return jsonify({"dataset": dataset, "count": len(dataset)})
+    except Exception as e:
+        logger.error(f"Failed to get training data: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Intervention Prediction API
+
+@app.route('/api/predict/train', methods=['POST'])
+def train_prediction_model():
+    """Train the intervention prediction model."""
+    try:
+        predictor = get_predictor()
+        success = predictor.train()
+        
+        if success:
+            return jsonify({
+                "status": "success",
+                "message": "Model trained successfully",
+                "feature_importance": predictor.get_feature_importance()
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Insufficient training data"
+            }), 400
+    except Exception as e:
+        logger.error(f"Model training failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/predict', methods=['POST'])
+def predict_intervention():
+    """Predict outcome for an intervention."""
+    try:
+        data = request.get_json()
+        
+        asset_data = data.get('asset_data', {})
+        intervention_type = data.get('intervention_type')
+        planned_effort_days = data.get('planned_effort_days', 1)
+        
+        predictor = get_predictor()
+        prediction = predictor.predict_from_asset(
+            asset_data,
+            intervention_type,
+            planned_effort_days
+        )
+        
+        return jsonify({
+            "predicted_value": prediction.predicted_value,
+            "success_probability": prediction.success_probability,
+            "risk_level": prediction.risk_level,
+            "effort_required": prediction.effort_required,
+            "confidence": prediction.confidence,
+            "recommended": prediction.recommended
+        })
+    except Exception as e:
+        logger.error(f"Prediction failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/predict/features', methods=['GET'])
+def get_feature_importance():
+    """Get feature importance from trained model."""
+    try:
+        predictor = get_predictor()
+        importance = predictor.get_feature_importance()
+        
+        return jsonify({
+            "feature_importance": importance,
+            "is_trained": predictor.is_trained
+        })
+    except Exception as e:
+        logger.error(f"Failed to get feature importance: {e}")
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         logger.error(f"Failed to get training data: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -1153,7 +1233,7 @@ def collateral_analyze():
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
-        analysis = asset_improvement_agent.analyze_single_asset(asset, repo_data)
+        analysis = AssetImprovementAgent().analyze_single_asset(asset, repo_data)
         return jsonify({"collateral_ops_analysis": analysis, "repo_data": repo_data})
     except Exception as e:
         return _safe_error_response("analysis_failed")
@@ -1173,8 +1253,9 @@ def collateral_lender_packet():
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
-        packet = lender_packet_gen.generate(asset, repo_data, borrower_verified)
-        summary = lender_packet_gen.generate_summary_text(packet)
+        lpg = LenderPacketGenerator()
+        packet = lpg.generate(asset, repo_data, borrower_verified)
+        summary = lpg.generate_summary_text(packet)
         # Persist
         collateral_registry.store_packet(packet.to_dict())
         collateral_registry.log_event(asset.asset_id, "lender_packet_generated", {"packet_id": packet.packet_id})
@@ -1198,7 +1279,7 @@ def collateral_buyer_packet():
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
         price = Decimal(str(asking_price)) if asking_price else None
-        packet = buyer_packet_gen.generate(asset, repo_data, price)
+        packet = BuyerPacketGenerator().generate(asset, repo_data, price)
         collateral_registry.store_packet(packet.to_dict())
         collateral_registry.log_event(asset.asset_id, "buyer_packet_generated", {"packet_id": packet.packet_id})
         return jsonify({"packet": packet.to_dict()})
@@ -1249,7 +1330,7 @@ def collateral_portfolio_audit():
                 assets.append(asset)
                 repo_data_map[asset.asset_id] = repo_data
 
-        report = asset_improvement_agent.run_portfolio_audit(assets, repo_data_map)
+        report = AssetImprovementAgent().run_portfolio_audit(assets, repo_data_map)
         return jsonify({"portfolio_report": report.to_dict(), "assets": [a.to_dict() for a in assets]})
     except Exception as e:
         return _safe_error_response("portfolio_audit_failed")
@@ -1268,7 +1349,7 @@ def collateral_financeability():
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
-        analysis = asset_improvement_agent.analyze_single_asset(asset, repo_data)
+        analysis = AssetImprovementAgent().analyze_single_asset(asset, repo_data)
         return jsonify({
             "financeability_report": analysis.get("financeability_report"),
             "valuation": analysis.get("valuation"),
@@ -1365,6 +1446,59 @@ def collateral_balance_sheet():
         })
     except Exception as e:
         return _safe_error_response("balance_sheet_generation_failed")
+
+
+# ============================================================================
+# UNDERWRITER API
+# ============================================================================
+
+_underwriter = DeveloperAssetUnderwriter()
+
+@app.route('/api/underwriter/evaluate', methods=['POST'])
+def underwriter_evaluate():
+    """Evaluate a software asset for financeability and collateral support."""
+    try:
+        data = request.get_json() or {}
+        asset_name = data.get('asset_name', 'unknown')
+        result = _underwriter.evaluate_asset({
+            'asset_name': asset_name,
+            'classification': data.get('classification', 'software'),
+            'primary_language': data.get('primary_language', 'unknown'),
+            'file_count': data.get('file_count', 0),
+            'has_tests': data.get('has_tests', False),
+            'has_ci_cd': data.get('has_ci_cd', False),
+            'has_documentation': data.get('has_documentation', False),
+            'code_quality_score': data.get('code_quality_score', 0),
+            'build_status': data.get('build_status', 'unknown'),
+            'test_status': data.get('test_status', 'unknown'),
+            'deployment_status': data.get('deployment_status', 'unknown'),
+            'has_license': data.get('has_license', False),
+            'license_type': data.get('license_type', ''),
+            'is_fork': data.get('is_fork', False),
+            'ownership_clarity': data.get('ownership_clarity', 'unknown'),
+        })
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Underwriter evaluate error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/underwriter/dashboard', methods=['GET'])
+def underwriter_dashboard():
+    """Get asset desk dashboard data."""
+    try:
+        return jsonify({
+            "desk": {
+                "view_name": "asset_desk",
+                "assets_evaluated": 0,
+                "total_portfolio_value": 0,
+                "average_financeability": "N/A",
+                "assets": []
+            }
+        })
+    except Exception as e:
+        logger.error(f"Underwriter dashboard error: {e}")
+        return jsonify({"error": str(e), "portfolio_summary": {}}), 500
 
 
 if __name__ == "__main__":
