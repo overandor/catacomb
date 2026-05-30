@@ -553,6 +553,11 @@ def api_user():
 
 # ===== BLOOMBERG TERMINAL DASHBOARD =====
 
+@app.route('/docs')
+def docs_page():
+    """SDK documentation."""
+    return render_template('docs.html')
+
 @app.route('/dashboard')
 def terminal_dashboard():
     """Bloomberg Terminal-style software intelligence dashboard."""

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb SDK Documentation</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .docs-container { max-width: 1200px; margin: 0 auto; padding: 32px; display: grid; grid-template-columns: 260px 1fr; gap: 40px; }
+        .docs-sidebar { position: sticky; top: 32px; height: fit-content; }
+        .docs-sidebar-header { font-size: 11px; color: var(--warm-stone); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .docs-sidebar-link { display: block; padding: 8px 12px; color: var(--light-stone); font-size: 13px; text-decoration: none; border-radius: 6px; transition: all 0.15s; }
+        .docs-sidebar-link:hover, .docs-sidebar-link.active { background: rgba(255,107,53,0.1); color: #fff; }
+        .docs-sidebar-sub { padding-left: 24px; font-size: 12px; color: var(--warm-stone); }
+        .docs-content { min-width: 0; }
+        .docs-section { margin-bottom: 48px; }
+        .docs-section-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+        .docs-section-desc { color: var(--warm-stone); margin-bottom: 24px; font-size: 15px; }
+        .endpoint-card { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.1); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+        .endpoint-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .endpoint-method { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .method-get { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .method-post { background: rgba(255,179,71,0.15); color: var(--amber-glow); }
+        .method-put { background: rgba(56,189,248,0.15); color: #38bdf8; }
+        .method-delete { background: rgba(220,20,60,0.15); color: var(--crimson-risk); }
+        .endpoint-path { font-family: var(--font-mono); font-size: 13px; color: #fff; }
+        .endpoint-body { padding: 18px; }
+        .endpoint-desc { color: var(--light-stone); font-size: 13px; margin-bottom: 12px; }
+        .code-block { background: #0d0d14; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 14px 16px; font-family: var(--font-mono); font-size: 12px; overflow-x: auto; margin: 12px 0; }
+        .code-block .comment { color: #6b7280; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .number { color: #79c0ff; }
+        .param-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+        .param-table th { text-align: left; padding: 8px 12px; color: var(--warm-stone); border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 500; }
+        .param-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--light-stone); }
+        .param-table .param-name { font-family: var(--font-mono); color: var(--molten-gold); }
+        .param-table .param-type { color: var(--amber-glow); font-size: 11px; }
+        .param-table .param-req { color: var(--crimson-risk); font-size: 10px; text-transform: uppercase; }
+        .param-table .param-opt { color: var(--warm-stone); font-size: 10px; text-transform: uppercase; }
+        .response-example { background: rgba(74,222,128,0.05); border-left: 3px solid #4ade80; }
+        @media (max-width: 768px) { .docs-container { grid-template-columns: 1fr; } .docs-sidebar { position: static; } }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/">Home</a>
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/search">Search</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/docs" class="active">Docs</a>
+        </nav>
+    </div>
+
+    <div class="docs-container">
+        <div class="docs-sidebar">
+            <div class="docs-sidebar-header">API Reference</div>
+            <a class="docs-sidebar-link active" href="#overview">Overview</a>
+            <a class="docs-sidebar-link" href="#auth">Authentication</a>
+            <div class="docs-sidebar-header">Proof of Inference</div>
+            <a class="docs-sidebar-link" href="#inference-proof">Generate Proof</a>
+            <a class="docs-sidebar-link" href="#proof-verify">Verify Proof</a>
+            <a class="docs-sidebar-link" href="#ollama-infer">Ollama Inference</a>
+            <div class="docs-sidebar-header">SDK</div>
+            <a class="docs-sidebar-link" href="#search">Search</a>
+            <a class="docs-sidebar-link" href="#repo-detail">Repo Detail</a>
+            <a class="docs-sidebar-link" href="#repo-ingest">Repo Ingest</a>
+            <a class="docs-sidebar-link" href="#mine-start">Live Mining</a>
+            <div class="docs-sidebar-header">Dashboard</div>
+            <a class="docs-sidebar-link" href="#dash-summary">Dashboard Summary</a>
+            <a class="docs-sidebar-link" href="#dash-stream">SSE Stream</a>
+            <div class="docs-sidebar-header">Core</div>
+            <a class="docs-sidebar-link" href="#stats">System Stats</a>
+            <a class="docs-sidebar-link" href="#interventions">Interventions</a>
+            <a class="docs-sidebar-link" href="#assets">Assets</a>
+        </div>
+
+        <div class="docs-content">
+            <div class="docs-section" id="overview">
+                <div class="docs-section-title">Catacomb SDK</div>
+                <div class="docs-section-desc">The Catacomb Software Intelligence API provides programmatic access to intervention mining, repository analysis, verifiable LLM inference, and real-time dashboard data. Base URL: <code>https://catacomb-eight.vercel.app/api/v1</code></div>
+
+                <div class="code-block">
+<span class="comment"># Python SDK</span>
+<span class="keyword">import</span> requests
+
+BASE = <span class="string">"https://catacomb-eight.vercel.app/api/v1"</span>
+
+<span class="comment"># Health check</span>
+resp = requests.get(<span class="string">"https://catacomb-eight.vercel.app/api/health"</span>)
+<span class="keyword">print</span>(resp.json())  <span class="comment"># {"status": "ok", "version": "2.0"}</span>
+                </div>
+            </div>
+
+            <div class="docs-section" id="inference-proof">
+                <div class="docs-section-title">Proof of Inference</div>
+                <div class="docs-section-desc">Generate cryptographically verifiable proofs that a specific LLM inference occurred with specific inputs and outputs.</div>
+
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/inference/proof</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Generate a verifiable proof of inference using SHA-256 composite hashing and HMAC-SHA256 signing.</div>
+                        <table class="param-table">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td class="param-name">model</td><td class="param-type">string</td><td class="param-req">Yes</td><td>Model name (e.g. "llama3.1")</td></tr>
+                                <tr><td class="param-name">prompt</td><td class="param-type">string</td><td class="param-req">Yes</td><td>Input prompt text</td></tr>
+                                <tr><td class="param-name">response</td><td class="param-type">string</td><td class="param-req">Yes</td><td>Model response text</td></tr>
+                                <tr><td class="param-name">metadata</td><td class="param-type">object</td><td class="param-opt">No</td><td>Generation parameters</td></tr>
+                                <tr><td class="param-name">latency_ms</td><td class="param-type">integer</td><td class="param-opt">No</td><td>Inference latency</td></tr>
+                                <tr><td class="param-name">store_in_ledger</td><td class="param-type">boolean</td><td class="param-opt">No</td><td>Persist to OutcomeLedger</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="code-block">
+<span class="comment"># Request</span>
+curl -X POST <span class="string">"https://catacomb-eight.vercel.app/api/v1/inference/proof"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"model":"llama3.1","prompt":"Hello","response":"Hi!"}'</span>
+                        </div>
+                        <div class="code-block response-example">
+<span class="comment"># Response</span>
+{
+  <span class="string">"proof_id"</span>: <span class="string">"550e8400-e29b-41d4-a716-446655440000"</span>,
+  <span class="string">"version"</span>: <span class="string">"1.0.0"</span>,
+  <span class="string">"model"</span>: <span class="string">"llama3.1"</span>,
+  <span class="string">"timestamp"</span>: <span class="string">"2026-05-30T04:00:00"</span>,
+  <span class="string">"input_hash"</span>: <span class="string">"2cf24dba5fb0a30e..."</span>,
+  <span class="string">"output_hash"</span>: <span class="string">"88d4266fd4e6338d..."</span>,
+  <span class="string">"composite_hash"</span>: <span class="string">"a1b2c3d4e5f6..."</span>,
+  <span class="string">"signature"</span>: <span class="string">"f8a7b6c5d4e3..."</span>,
+  <span class="string">"verification"</span>: {
+    <span class="string">"algorithm"</span>: <span class="string">"sha256+hmac-sha256"</span>,
+    <span class="string">"verified"</span>: <span class="keyword">false</span>,
+    <span class="string">"verification_timestamp"</span>: <span class="keyword">null</span>
+  }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint-card" id="proof-verify">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/proof/{proof_id}/verify</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Verify a proof's cryptographic integrity by re-computing hashes and validating the HMAC signature.</div>
+                        <div class="code-block">
+<span class="comment"># Verify by ID (fetches from ledger)</span>
+curl <span class="string">"https://catacomb-eight.vercel.app/api/v1/proof/550e8400-e29b-41d4-a716-446655440000/verify"</span>
+                        </div>
+                        <div class="code-block response-example">
+<span class="comment"># Response</span>
+{
+  <span class="string">"valid"</span>: <span class="keyword">true</span>,
+  <span class="string">"error"</span>: <span class="keyword">null</span>,
+  <span class="string">"message"</span>: <span class="string">"Proof is cryptographically valid"</span>,
+  <span class="string">"proof_id"</span>: <span class="string">"550e8400-e29b-41d4-a716-446655440000"</span>,
+  <span class="string">"age_seconds"</span>: <span class="number">42</span>,
+  <span class="string">"verification_timestamp"</span>: <span class="string">"2026-05-30T04:00:42"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint-card" id="ollama-infer">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/inference/ollama</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Serverless Ollama inference endpoint. Calls local Ollama instance, generates response, and optionally creates a proof.</div>
+                        <div class="code-block">
+curl -X POST <span class="string">"https://catacomb-eight.vercel.app/api/v1/inference/ollama"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"model":"llama3.1","prompt":"Explain blockchain","options":{"temperature":0.7},"store_proof":true}'</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="search">
+                <div class="docs-section-title">Search</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/search?q={query}&category={category}</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Universal search across repositories, assets, and interventions.</div>
+                        <table class="param-table">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td class="param-name">q</td><td class="param-type">string</td><td class="param-req">Yes</td><td>Search query</td></tr>
+                                <tr><td class="param-name">category</td><td class="param-type">string</td><td class="param-opt">No</td><td>all, assets, interventions</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="repo-detail">
+                <div class="docs-section-title">Repository Detail</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/repo/{repo_id}</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Get full repository data with KPIs and complete intervention history.</div>
+                        <div class="code-block response-example">
+{
+  <span class="string">"repo_id"</span>: <span class="string">"github:microsoft/vscode"</span>,
+  <span class="string">"kpis"</span>: {
+    <span class="string">"total_interventions"</span>: <span class="number">47</span>,
+    <span class="string">"avg_predicted_value"</span>: <span class="number">12.4</span>,
+    <span class="string">"avg_actual_value"</span>: <span class="number">10.8</span>,
+    <span class="string">"verified_count"</span>: <span class="number">32</span>,
+    <span class="string">"success_rate"</span>: <span class="number">68.1</span>
+  },
+  <span class="string">"interventions"</span>: [...],
+  <span class="string">"intervention_count"</span>: <span class="number">47</span>
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="repo-ingest">
+                <div class="docs-section-title">Repository Ingestion</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/repo/ingest</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Ingest a new GitHub repository, fetch metrics, extract KPIs, and store as an asset record.</div>
+                        <div class="code-block">
+curl -X POST <span class="string">"https://catacomb-eight.vercel.app/api/v1/repo/ingest"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"owner":"microsoft","repo":"vscode","github_token":"ghp_xxx"}'</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="mine-start">
+                <div class="docs-section-title">Live Mining</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/mine/start</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Start asynchronous mining of a GitHub repository. Returns immediately; poll /api/v1/mine/status for progress.</div>
+                    </div>
+                </div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/mine/status</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Get current mining status: progress percentage, message, and extracted results.</div>
+                        <div class="code-block response-example">
+{
+  <span class="string">"in_progress"</span>: <span class="keyword">true</span>,
+  <span class="string">"progress"</span>: <span class="number">65</span>,
+  <span class="string">"total"</span>: <span class="number">100</span>,
+  <span class="string">"message"</span>: <span class="string">"Extracted 12 interventions..."</span>,
+  <span class="string">"results"</span>: [{<span class="string">"asset"</span>: <span class="string">"vscode"</span>, <span class="string">"type"</span>: <span class="string">"API Launch"</span>, <span class="string">"value"</span>: <span class="number">2.5</span>}]
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="dash-summary">
+                <div class="docs-section-title">Dashboard Summary</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/dashboard/summary</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Complete dashboard metrics for the Bloomberg Terminal widget panels.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="dash-stream">
+                <div class="docs-section-title">Real-Time Stream</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/dashboard/stream</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Server-Sent Events stream for real-time dashboard updates. Connect with EventSource.</div>
+                        <div class="code-block">
+<span class="keyword">const</span> source = <span class="keyword">new</span> EventSource(<span class="string">"https://catacomb-eight.vercel.app/api/v1/dashboard/stream"</span>);
+source.onmessage = <span class="keyword">function</span>(event) {
+  <span class="keyword">const</span> data = JSON.parse(event.data);
+  <span class="keyword">console</span>.log(data.new_interventions_1m, data.total_interventions);
+};
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="stats">
+                <div class="docs-section-title">System Statistics</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/stats</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Comprehensive system statistics including intervention counts, accuracy metrics, and top intervention types.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="interventions">
+                <div class="docs-section-title">Interventions</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/interventions?page=1&per_page=20&status=&type=</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Paginated list of all interventions with optional status and type filters.</div>
+                    </div>
+                </div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/intervention/{id}</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">Get detailed information about a specific intervention.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="docs-section" id="assets">
+                <div class="docs-section-title">Assets</div>
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/assets</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <div class="endpoint-desc">List all tracked assets with intervention counts, average predicted values, and last intervention dates.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
