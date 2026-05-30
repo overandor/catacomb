@@ -153,10 +153,38 @@ python github_intervention_miner.py
 
 ## API Endpoints
 
+### Discovery & Intervention
 - `GET /api/radar` - Assets ranked by value per engineering day
 - `GET /api/discover/promising` - Alpha Universe (undervalued assets only)
 - `GET /api/ledger` - Intervention ledger with verification status
 - `GET /api/metrics` - System metrics (verified interventions, engineering alpha, etc.)
+
+### CollateralOps Capital Translation (New)
+- `POST /api/collateral/analyze` - Full 6-value appraisal + financeability report for a repo
+- `POST /api/collateral/financeability` - Deep financeability subscores, blockers, and improvement queue
+- `POST /api/collateral/lender_packet` - Generate lender-ready Software Collateral Packet
+- `POST /api/collateral/buyer_packet` - Generate buyer-facing acquisition packet
+- `POST /api/collateral/portfolio_audit` - Portfolio-level asset improvement audit
+- `POST /api/collateral/balance_sheet` - Software balance sheet across a portfolio
+- `POST /api/collateral/agent_audit` - Audit AI agent work in a directory (CFO-readable labor accounting)
+
+### CollateralOps Example Usage
+```bash
+# Analyze a single repo for collateral readiness
+curl -X POST http://localhost:5001/api/collateral/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"owner": "facebook", "repo": "react"}'
+
+# Generate a lender packet
+curl -X POST http://localhost:5001/api/collateral/lender_packet \
+  -H "Content-Type: application/json" \
+  -d '{"owner": "facebook", "repo": "react", "borrower_verified": false}'
+
+# Portfolio balance sheet
+curl -X POST http://localhost:5001/api/collateral/balance_sheet \
+  -H "Content-Type: application/json" \
+  -d '{"repos": [{"owner": "facebook", "repo": "react"}, {"owner": "torvalds", "repo": "linux"}]}'
+```
 
 ## Roadmap
 

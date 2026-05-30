@@ -2,11 +2,10 @@
 """
 Authentication and authorization system for Catacomb.
 
-Roles:
-- viewer: Public read-only access to Radar, Alpha, Interventions, Ledger, Search
-- analyst: Can create and verify interventions
-- verifier: Can verify intervention outcomes
-- admin: Full access including Mine, Jobs, Logs, Config
+Three-tier product model:
+- PUBLIC: Radar (asset discovery, innovation alpha)
+- PROFESSIONAL: Underwriter (professional evaluation, review cards, asset desk)
+- ADMIN: Mine (job mining, competency graph, system configuration)
 """
 
 import os
@@ -16,23 +15,22 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional, List
 from functools import wraps
 from flask import request, jsonify, g
-from database import get_database
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 
-class UserRole:
-    """User roles with permissions."""
-    VIEWER = 'viewer'
-    ANALYST = 'analyst'
-    VERIFIER = 'verifier'
-    ADMIN = 'admin'
+class UserRole(Enum):
+    """User roles for three-tier product model."""
+    PUBLIC = "public"
+    PROFESSIONAL = "professional"
+    ADMIN = "admin"
     
     @classmethod
     def all(cls) -> List[str]:
-        return [cls.VIEWER, cls.ANALYST, cls.VERIFIER, cls.ADMIN]
+        return [role.value for role in cls]
     
     @classmethod
     def can_access_page(cls, role: str, page: str) -> bool:
@@ -46,13 +44,26 @@ class UserRole:
         Returns:
             True if role can access page
         """
-        public_pages = ['radar', 'alpha', 'interventions', 'ledger', 'search', 'live']
-        admin_pages = ['mine', 'jobs', 'logs', 'config']
+        # Radar tier (public)
+        radar_pages = ['radar', 'alpha', 'search']
         
-        if page in public_pages:
+        # Underwriter tier (professional)
+        underwriter_pages = ['underwriter', 'asset-desk', 'review-cards', 'portfolio']
+        
+        # Mine tier (admin)
+        mine_pages = ['mine', 'interventions', 'ledger', 'competency']
+        
+        # Live (all tiers)
+        all_pages = ['live']
+        
+        if page in radar_pages:
             return role in cls.all()
-        elif page in admin_pages:
-            return role == cls.ADMIN
+        elif page in underwriter_pages:
+            return role in [cls.PROFESSIONAL.value, cls.ADMIN.value]
+        elif page in mine_pages:
+            return role == cls.ADMIN.value
+        elif page in all_pages:
+            return role in cls.all()
         return False
     
     @classmethod
@@ -68,10 +79,16 @@ class UserRole:
             True if role can perform action
         """
         permissions = {
-            cls.VIEWER: ['view'],
-            cls.ANALYST: ['view', 'create_intervention'],
-            cls.VERIFIER: ['view', 'create_intervention', 'verify'],
-            cls.ADMIN: ['view', 'create_intervention', 'verify', 'mine', 'admin']
+            cls.PUBLIC.value: ['view_radar', 'view_alpha', 'search'],
+            cls.PROFESSIONAL.value: [
+                'view_radar', 'view_alpha', 'search',
+                'evaluate_asset', 'generate_review_card', 'view_asset_desk', 'manage_portfolio'
+            ],
+            cls.ADMIN.value: [
+                'view_radar', 'view_alpha', 'search',
+                'evaluate_asset', 'generate_review_card', 'view_asset_desk', 'manage_portfolio',
+                'mine_jobs', 'edit_competency_graph', 'view_all_audit_logs', 'configure_system'
+            ]
         }
         
         return action in permissions.get(role, [])
@@ -125,41 +142,55 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def create_user(email: str, name: str, role: str = UserRole.VIEWER) -> Dict[str, Any]:
+def create_user(email: str, password_hash: str, role: str = UserRole.PUBLIC.value) -> Dict[str, Any]:
     """
     Create a new user.
     
     Args:
         email: User email
-        name: User name
+        password_hash: Hashed password
         role: User role
         
     Returns:
         User data
     """
-    db = get_database()
+    from database_manager import get_database_manager
+    from database_schema import UserRole as DBUserRole
     
-    # Check if user exists
-    existing = db.select('users', where={'email': email})
-    if existing:
-        logger.warning(f"User {email} already exists")
-        return existing[0]
+    db = get_database_manager()
     
-    # Create user
-    user_data = {
-        'email': email,
-        'name': name,
-        'role': role,
-        'created_at': datetime.utcnow().isoformat(),
-        'updated_at': datetime.utcnow().isoformat()
+    # Map string role to enum
+    role_mapping = {
+        UserRole.PUBLIC.value: DBUserRole.PUBLIC,
+        UserRole.PROFESSIONAL.value: DBUserRole.PROFESSIONAL,
+        UserRole.ADMIN.value: DBUserRole.ADMIN,
     }
     
-    db.insert('users', user_data)
+    db_role = role_mapping.get(role, DBUserRole.PUBLIC)
     
-    # Fetch created user
-    user = db.select('users', where={'email': email})[0]
+    # Check if user exists
+    existing = db.get_user_by_email(email)
+    if existing:
+        logger.warning(f"User {email} already exists")
+        return {
+            'id': existing.id,
+            'email': existing.email,
+            'role': existing.role.value,
+        }
+    
+    # Create user
+    user = db.create_user(
+        email=email,
+        password_hash=password_hash,
+        role=db_role,
+    )
+    
     logger.info(f"Created user {email} with role {role}")
-    return user
+    return {
+        'id': user.id,
+        'email': user.email,
+        'role': user.role.value,
+    }
 
 
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
@@ -172,9 +203,18 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     Returns:
         User data or None
     """
-    db = get_database()
-    users = db.select('users', where={'email': email})
-    return users[0] if users else None
+    from database_manager import get_database_manager
+    
+    db = get_database_manager()
+    user = db.get_user_by_email(email)
+    
+    if user:
+        return {
+            'id': user.id,
+            'email': user.email,
+            'role': user.role.value,
+        }
+    return None
 
 
 def require_role(required_role: str):
@@ -200,10 +240,9 @@ def require_role(required_role: str):
             
             # Check role hierarchy
             role_hierarchy = {
-                UserRole.VIEWER: 0,
-                UserRole.ANALYST: 1,
-                UserRole.VERIFIER: 2,
-                UserRole.ADMIN: 3
+                UserRole.PUBLIC.value: 0,
+                UserRole.PROFESSIONAL.value: 1,
+                UserRole.ADMIN.value: 2
             }
             
             if role_hierarchy.get(user_role, 0) < role_hierarchy.get(required_role, 0):
@@ -250,16 +289,16 @@ def get_current_user() -> Optional[Dict[str, Any]]:
 def is_admin() -> bool:
     """Check if current user is admin."""
     user = get_current_user()
-    return user and user.get('role') == UserRole.ADMIN
+    return user and user.get('role') == UserRole.ADMIN.value
 
 
-def is_verifier() -> bool:
-    """Check if current user is verifier or admin."""
+def is_professional() -> bool:
+    """Check if current user is professional or admin."""
     user = get_current_user()
-    return user and user.get('role') in [UserRole.VERIFIER, UserRole.ADMIN]
+    return user and user.get('role') in [UserRole.PROFESSIONAL.value, UserRole.ADMIN.value]
 
 
-def is_analyst() -> bool:
-    """Check if current user is analyst, verifier, or admin."""
+def is_public() -> bool:
+    """Check if current user is authenticated (any tier)."""
     user = get_current_user()
-    return user and user.get('role') in [UserRole.ANALYST, UserRole.VERIFIER, UserRole.ADMIN]
+    return user is not None

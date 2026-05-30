@@ -1,0 +1,28 @@
+services:
+  # Web service
+  - type: web
+    name: catacomb
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt -r requirements_database.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: catacomb-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11
+
+  # PostgreSQL database
+  - type: pserv
+    name: catacomb-db
+    plan: free
+    databaseName: catacomb
+    user: catacomb_user
+    maxconnections: 20
+    ipAllowList: []
