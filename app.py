@@ -20,6 +20,12 @@ from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
 
+# Production imports
+import re
+from decimal import Decimal
+from flask.json.provider import DefaultJSONProvider
+from collateral_registry import CollateralRegistry
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -54,6 +60,36 @@ login_manager.login_view = 'login'
 # Initialize OAuth
 init_oauth(app)
 
+# Custom JSON encoder for Decimal and other non-serializable types
+class CollateralJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
+
+app.json = CollateralJSONProvider(app)
+
+# Input validation
+_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+def _validate_owner_repo(owner: str, repo: str) -> tuple:
+    """Validate and sanitize owner/repo strings. Returns (owner, repo) or raises ValueError."""
+    if not owner or not repo:
+        raise ValueError("owner and repo are required")
+    owner = owner.strip().lower()
+    repo = repo.strip()
+    if not _REPO_NAME_RE.match(owner) or not _REPO_NAME_RE.match(repo):
+        raise ValueError("invalid characters in owner or repo")
+    if len(owner) > 39 or len(repo) > 100:
+        raise ValueError("owner or repo name too long")
+    return owner, repo
+
+def _safe_error_response(message: str, status_code: int = 500, log_exception: bool = True):
+    """Return a sanitized error response without leaking exception details."""
+    if log_exception:
+        logger.error(f"API error: {message}")
+    return jsonify({"error": message, "status": "error"}), status_code
+
 # Base directory for absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
@@ -73,6 +109,12 @@ kpi_calculator = AbandonedRepoKPIs()
 # Cache for discovery results (5 minute TTL)
 discovery_cache = {}
 CACHE_TTL = 300  # 5 minutes
+
+# Thread pool for concurrent repo analysis
+_executor = ThreadPoolExecutor(max_workers=4)
+
+# CollateralOps persistence layer
+collateral_registry = CollateralRegistry()
 
 
 class User:
