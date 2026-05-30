@@ -425,100 +425,122 @@ def discover_promising_repos():
     """
     Get promising repositories using Innovation Alpha = Expected Future Value - Current Recognition.
     
-    Now filters to Alpha Universe only:
+    Now filters to Alpha Universe only using intervention ledger data:
     - Positive Innovation Alpha (undervalued)
-    - Low recognition (not popular)
-    - Strong technical foundations
-    - Ecosystem leverage
-    - Intervention potential
+    - Verified interventions
     """
-    # Check cache
-    cache_key = "promising"
-    current_time = time.time()
-    
-    if cache_key in discovery_cache and current_time - discovery_cache[cache_key]["timestamp"] < CACHE_TTL:
-        logger.info("Returning cached promising discovery results")
-        return jsonify(discovery_cache[cache_key]["data"])
-    
     try:
-        # Use expanded dataset of 10,000 repos for database population
-        promising_repos = get_expanded_repos()
+        import sqlite3
+        import json
+        conn = sqlite3.connect('outcome_ledger.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
         
-        orch = get_orchestrator()
-        universe_model = UniverseModel()
-        value_calculator = ValueDeltaCalculator()
+        # Get verified interventions with positive innovation alpha
+        cursor.execute("""
+            SELECT 
+                asset_id,
+                asset_name,
+                intervention_type,
+                intervention_description,
+                predicted_value,
+                planned_effort_days,
+                outcome_metrics,
+                before_state,
+                after_state,
+                verification_status
+            FROM interventions
+            WHERE verification_status = 'verified'
+            ORDER BY predicted_value DESC
+            LIMIT 50
+        """)
         
         results = []
-        
-        # Parallel processing
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_repo = {
-                executor.submit(orch.analyze_repo, owner, repo): (owner, repo)
-                for owner, repo in promising_repos[:50]  # Analyze more for Alpha Universe
-            }
+        for row in cursor.fetchall():
+            record = dict(row)
             
-            for future in as_completed(future_to_repo):
-                owner, repo = future_to_repo[future]
-                try:
-                    result = future.result(timeout=30)
-                    if "error" not in result:
-                        repo_data = result["repo_data"]
-                        analysis = result.get("analysis", {})
-                        
-                        # Evaluate Alpha Universe criteria
-                        alpha_passed, alpha_reason = universe_model.evaluate_alpha(repo_data, analysis)
-                        
-                        # Only include Alpha Universe assets
-                        if alpha_passed:
-                            valuation = repo_valuation.calculate_valuation(
-                                repo_data,
-                                analysis
-                            )
-                            
-                            # Calculate Innovation Alpha
-                            alpha_data = kpi_calculator.calculate_innovation_alpha(
-                                repo_data,
-                                analysis,
-                                valuation
-                            )
-                            
-                            # Calculate Value Delta
-                            best_intervention = analysis.get("best_intervention", {})
-                            intervention_type = best_intervention.get("name", "documentation_improvement")
-                            value_delta = value_calculator.calculate_value_delta(repo_data, [intervention_type])
-                            
-                            results.append({
-                                "repo": f"{owner}/{repo}",
-                                "valuation": valuation,
-                                "repo_data": repo_data,
-                                "analysis": analysis,
-                                "innovation_alpha": alpha_data["innovation_alpha"],
-                                "expected_future_value": alpha_data["expected_future_value"],
-                                "current_recognition": alpha_data["current_recognition"],
-                                "kpis": alpha_data["kpis"],
-                                "kpi_breakdown": alpha_data["kpi_breakdown"],
-                                "value_delta": value_delta,
-                                "value_per_day": value_delta["value_per_day"],
-                                "alpha_reason": alpha_reason,
-                            })
-                except Exception as e:
-                    logger.warning(f"Failed to analyze {owner}/{repo}: {str(e)}")
-                    continue
+            # Parse JSON fields
+            try:
+                if record['outcome_metrics']:
+                    record['outcome_metrics'] = json.loads(record['outcome_metrics'])
+                else:
+                    record['outcome_metrics'] = {}
+                
+                if record['before_state']:
+                    record['before_state'] = json.loads(record['before_state'])
+                else:
+                    record['before_state'] = {}
+                
+                if record['after_state']:
+                    record['after_state'] = json.loads(record['after_state'])
+                else:
+                    record['after_state'] = {}
+            except:
+                record['outcome_metrics'] = {}
+                record['before_state'] = {}
+                record['after_state'] = {}
+            
+            # Calculate value per day
+            effort_days = record.get('planned_effort_days', 1)
+            actual_value = record['outcome_metrics'].get('actual_value', record.get('predicted_value', 0))
+            value_per_day = actual_value / max(effort_days, 1)
+            
+            # Calculate innovation alpha (actual - predicted)
+            predicted_value = record.get('predicted_value', 0)
+            innovation_alpha = actual_value - predicted_value
+            
+            # Calculate value delta percentage
+            value_delta_percent = ((actual_value - predicted_value) / max(predicted_value, 1)) * 100
+            
+            # Only include if positive innovation alpha (undervalued)
+            if innovation_alpha > 0:
+                results.append({
+                    "repo": record['asset_id'],
+                    "repo_data": {
+                        "description": record['intervention_description'],
+                        "stars": record['before_state'].get('stars', 0),
+                        "forks": record['before_state'].get('forks', 0),
+                        "contributors": record['before_state'].get('contributors', 0),
+                        "language": record['before_state'].get('language', 'unknown'),
+                    },
+                    "intervention_score": actual_value,
+                    "best_intervention": {
+                        "name": record['intervention_type'],
+                        "effort_days": effort_days,
+                        "probability": 0.8,
+                        "upside": 0.5,
+                    },
+                    "value_delta": {
+                        "current_value": predicted_value,
+                        "achievable_value": actual_value,
+                        "value_delta": actual_value - predicted_value,
+                        "value_delta_percent": value_delta_percent,
+                    },
+                    "value_per_day": value_per_day,
+                    "total_effort_days": effort_days,
+                    "innovation_alpha": innovation_alpha,
+                    "hidden_infrastructure_score": 0.5 + (value_delta_percent / 200),
+                    "transitive_dependency_count": 10,
+                    "verification_status": record['verification_status'],
+                })
         
-        # Sort by Innovation Alpha (primary) and Value Per Day (secondary)
+        conn.close()
+        
+        # Sort by Innovation Alpha, then by Value Per Day
         results.sort(key=lambda x: (x["innovation_alpha"], x["value_per_day"]), reverse=True)
         
-        # Cache results
-        discovery_cache[cache_key] = {
-            "timestamp": current_time,
-            "data": {"results": results, "count": len(results)}
-        }
+        return jsonify({
+            "results": results,
+            "count": len(results)
+        })
         
-        logger.info(f"Promising discovery (Alpha Universe): {len(results)} undervalued repos")
-        return jsonify({"results": results, "count": len(results)})
     except Exception as e:
-        logger.error(f"Promising discovery failed: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error fetching promising repos: {e}")
+        return jsonify({
+            "results": [],
+            "count": 0,
+            "error": str(e)
+        })
 
 
 @app.route('/api/database/populate', methods=['POST'])
@@ -740,86 +762,119 @@ def catacomb_radar():
     Catacomb Radar: Most important tab showing hidden infrastructure and intervention opportunities.
     
     Ranked by Expected Value Created Per Engineering Day.
+    Uses intervention ledger data instead of real-time analysis.
     """
-    # Check cache
-    cache_key = "radar"
-    current_time = time.time()
-    
-    if cache_key in discovery_cache and current_time - discovery_cache[cache_key]["timestamp"] < CACHE_TTL:
-        logger.info("Returning cached radar results")
-        return jsonify(discovery_cache[cache_key]["data"])
-    
     try:
-        # Get repos from expanded dataset
-        all_repos = get_expanded_repos()
+        import sqlite3
+        import json
+        conn = sqlite3.connect('outcome_ledger.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
         
-        orch = get_orchestrator()
-        value_calculator = ValueDeltaCalculator()
-        kpis = EcosystemKPIs()
+        # Get verified interventions with outcome metrics
+        cursor.execute("""
+            SELECT 
+                asset_id,
+                asset_name,
+                intervention_type,
+                intervention_description,
+                predicted_value,
+                planned_effort_days,
+                outcome_metrics,
+                before_state,
+                after_state,
+                verification_status
+            FROM interventions
+            WHERE verification_status = 'verified'
+            ORDER BY predicted_value DESC
+            LIMIT 50
+        """)
         
         results = []
-        
-        # Analyze a sample for radar (top 100)
-        radar_repos = all_repos[:100]
-        
-        # Parallel processing
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_repo = {
-                executor.submit(orch.analyze_repo, owner, repo): (owner, repo)
-                for owner, repo in radar_repos
-            }
+        for row in cursor.fetchall():
+            record = dict(row)
             
-            for future in as_completed(future_to_repo):
-                owner, repo = future_to_repo[future]
-                try:
-                    result = future.result()
-                    if "error" not in result:
-                        repo_data = result.get("repo_data", {})
-                        analysis = result.get("analysis", {})
-                        
-                        # Calculate Value Delta
-                        best_intervention = analysis.get("best_intervention", {})
-                        intervention_type = best_intervention.get("name", "documentation_improvement")
-                        value_delta = value_calculator.calculate_value_delta(repo_data, [intervention_type])
-                        
-                        # Calculate ecosystem KPIs
-                        ecosystem_kpis = kpis.calculate_all_kpis(repo_data)
-                        hidden_infrastructure_score = kpis.calculate_hidden_infrastructure_score(repo_data)
-                        
-                        # Only include if it has intervention potential
-                        if value_delta["value_per_day"] > 0.1:
-                            results.append({
-                                "repo": f"{owner}/{repo}",
-                                "repo_data": repo_data,
-                                "intervention_score": analysis.get("intervention_score", 0),
-                                "best_intervention": best_intervention,
-                                "value_delta": value_delta,
-                                "value_per_day": value_delta["value_per_day"],
-                                "total_effort_days": value_delta["total_effort_days"],
-                                "ecosystem_kpis": ecosystem_kpis,
-                                "hidden_infrastructure_score": hidden_infrastructure_score,
-                                "transitive_dependency_count": ecosystem_kpis["transitive_dependency_count"],
-                                "downstream_revenue_exposure": ecosystem_kpis["downstream_revenue_exposure"],
-                                "migration_cost_days": ecosystem_kpis["migration_cost_days"],
-                            })
-                except Exception as e:
-                    logger.error(f"Error analyzing {owner}/{repo}: {e}")
+            # Parse JSON fields
+            try:
+                if record['outcome_metrics']:
+                    record['outcome_metrics'] = json.loads(record['outcome_metrics'])
+                else:
+                    record['outcome_metrics'] = {}
+                
+                if record['before_state']:
+                    record['before_state'] = json.loads(record['before_state'])
+                else:
+                    record['before_state'] = {}
+                
+                if record['after_state']:
+                    record['after_state'] = json.loads(record['after_state'])
+                else:
+                    record['after_state'] = {}
+            except:
+                record['outcome_metrics'] = {}
+                record['before_state'] = {}
+                record['after_state'] = {}
+            
+            # Calculate value per day
+            effort_days = record.get('planned_effort_days', 1)
+            actual_value = record['outcome_metrics'].get('actual_value', record.get('predicted_value', 0))
+            value_per_day = actual_value / max(effort_days, 1)
+            
+            # Calculate innovation alpha (actual - predicted)
+            predicted_value = record.get('predicted_value', 0)
+            innovation_alpha = actual_value - predicted_value
+            
+            # Calculate value delta percentage
+            value_delta_percent = ((actual_value - predicted_value) / max(predicted_value, 1)) * 100
+            
+            results.append({
+                "repo": record['asset_id'],
+                "repo_data": {
+                    "description": record['intervention_description'],
+                    "stars": record['before_state'].get('stars', 0),
+                    "forks": record['before_state'].get('forks', 0),
+                    "contributors": record['before_state'].get('contributors', 0),
+                    "language": record['before_state'].get('language', 'unknown'),
+                },
+                "intervention_score": actual_value,
+                "best_intervention": {
+                    "name": record['intervention_type'],
+                    "effort_days": effort_days,
+                    "probability": 0.8,  # Default for verified interventions
+                    "upside": 0.5,
+                },
+                "value_delta": {
+                    "current_value": predicted_value,
+                    "achievable_value": actual_value,
+                    "value_delta": actual_value - predicted_value,
+                    "value_delta_percent": value_delta_percent,
+                },
+                "value_per_day": value_per_day,
+                "total_effort_days": effort_days,
+                "innovation_alpha": innovation_alpha,
+                "hidden_infrastructure_score": 0.5 + (value_delta_percent / 200),  # Simplified calculation
+                "transitive_dependency_count": 10,  # Placeholder
+                "verification_status": record['verification_status'],
+            })
+        
+        conn.close()
         
         # Sort by Expected Value Created Per Engineering Day
         results.sort(key=lambda x: x["value_per_day"], reverse=True)
         
-        # Cache results
-        discovery_cache[cache_key] = {
-            "data": jsonify({"results": results, "count": len(results)}).get_json(),
-            "timestamp": current_time
-        }
-        
-        logger.info(f"Catacomb Radar: {len(results)} opportunities ranked by value per engineering day")
-        return jsonify({"results": results, "count": len(results)})
+        return jsonify({
+            "results": results,
+            "count": len(results)
+        })
         
     except Exception as e:
-        logger.error(f"Error in Catacomb Radar: {e}")
-        return jsonify({"error": str(e), "results": [], "count": 0}), 500
+        logger.error(f"Error fetching radar: {e}")
+        return jsonify({
+            "results": [],
+            "count": 0,
+            "error": str(e)
+        })
+        
 
 
 if __name__ == "__main__":
