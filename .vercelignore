@@ -1,0 +1,76 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Database files (ephemeral on Vercel)
+*.db
+*.sqlite
+*.sqlite3
+outcome_ledger.db
+
+# Logs
+*.log
+catacomb_api.log
+
+# Generated data files
+elo_ratings.json
+transformation_patterns.json
+
+# Documentation (not needed for runtime)
+ARCHITECTURE_NOTES.md
+ASSET_EMBEDDING_MODEL.md
+CLOSING_THE_LOOP.md
+FOUR_ENGINE_ARCHITECTURE.md
+INTERVENTION_OUTCOME_PREDICTION.md
+LIQUIDDB.md
+ML_TRAINING.md
+NEXT_PHASE_EXECUTION.md
+OUTCOME_LEDGER_SCHEMA.md
+PROTOCOL.md
+ROADMAP.md
+SECURITY.md
+STARTUP_STATUS.md
+VNEXT_ARCHITECTURE.md
+WAVE_EXPORT.md
+WEB_UI.md
+
+# Test files
+test_github_miner.py
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+
+# Local Vercel config
+.vercel
+
+# Temporary files
+*.tmp
