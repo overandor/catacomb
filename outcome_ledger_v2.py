@@ -221,6 +221,59 @@ class OutcomeLedger:
         
         return record_id
     
+    def record_intervention(self, **kwargs) -> str:
+        """Flexible intervention record creation for integrations (e.g. proof storage)."""
+        record_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+        
+        before_state = kwargs.get('before_state', {})
+        before_hash = self._compute_hash(before_state)
+        intervention_hash = self._compute_hash({
+            "intervention_type": kwargs.get('intervention_type', 'unknown'),
+            "intervention_description": kwargs.get('intervention_description', ''),
+            "asset_id": kwargs.get('asset_id', '')
+        })
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO interventions (
+                record_id, created_at, updated_at,
+                asset_id, asset_type, asset_name,
+                developer_id, developer_username,
+                before_state, before_hash,
+                intervention_type, intervention_description, planned_effort_days,
+                predicted_value, predicted_probability, predicted_risk, predicted_outcome,
+                status, intervention_hash, after_state, outcome_metrics, verification_notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            record_id, now, now,
+            kwargs.get('asset_id', ''),
+            kwargs.get('asset_type', 'unknown'),
+            kwargs.get('asset_name', ''),
+            kwargs.get('developer_id', ''),
+            kwargs.get('developer_id', ''),
+            json.dumps(before_state), before_hash,
+            kwargs.get('intervention_type', 'unknown'),
+            kwargs.get('intervention_description', ''),
+            kwargs.get('planned_effort_days', 0),
+            kwargs.get('predicted_value', 0),
+            kwargs.get('predicted_probability', 0.5),
+            kwargs.get('predicted_risk', 0.0),
+            json.dumps(kwargs.get('predicted_outcome')) if kwargs.get('predicted_outcome') else None,
+            InterventionStatus.PLANNED.value,
+            intervention_hash,
+            json.dumps(kwargs.get('after_state')) if kwargs.get('after_state') else None,
+            json.dumps(kwargs.get('outcome_metrics')) if kwargs.get('outcome_metrics') else None,
+            kwargs.get('verification_link', '')
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return record_id
+    
     def start_intervention(self, record_id: str, actual_effort_days: int = None) -> Dict[str, Any]:
         """Mark intervention as started."""
         now = datetime.utcnow().isoformat()
