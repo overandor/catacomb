@@ -493,6 +493,7 @@
                 fetch('/api/radar')
                     .then(res => res.json())
                     .then(data => {
+                        console.log('Radar data received:', data);
                         setRepos(data.results || []);
                         setLoading(false);
                     })
