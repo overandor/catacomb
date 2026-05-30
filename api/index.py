@@ -13,6 +13,7 @@ from github_intervention_miner import GitHubInterventionMiner, seed_mined_interv
 from catacomb_radar import CatacombRadar, RadarSignal
 from universe_classifier import UniverseClassifier, AssetMetrics, Universe
 from prediction_accuracy import PredictionAccuracyTracker
+from package_ecosystem_miner import PackageEcosystemMiner, seed_package_interventions
 from datetime import datetime
 import json
 import threading
@@ -32,6 +33,7 @@ transformation_tracker = TransformationTracker()
 radar = CatacombRadar()
 classifier = UniverseClassifier()
 accuracy_tracker = PredictionAccuracyTracker()
+package_miner = PackageEcosystemMiner()
 
 # Load existing predictions from ledger
 accuracy_tracker.load_records_from_ledger(ledger)
@@ -171,6 +173,58 @@ def start_mining():
 def mining_status_api():
     """Get current mining status."""
     return jsonify(mining_status)
+
+@app.route('/api/mine/packages', methods=['POST'])
+def start_package_mining():
+    """Start mining package ecosystems (npm, PyPI, crates.io)."""
+    data = request.get_json()
+    npm_packages = data.get('npm_packages', 10)
+    pypi_packages = data.get('pypi_packages', 10)
+    crates = data.get('crates', 10)
+    limit_per_package = data.get('limit_per_package', 10)
+    
+    mining_status["in_progress"] = True
+    mining_status["message"] = "Mining package ecosystems..."
+    mining_status["progress"] = 0
+    mining_status["total"] = npm_packages + pypi_packages + crates
+    
+    def mine_packages():
+        try:
+            from package_ecosystem_miner import HIGH_VALUE_NPM_PACKAGES, HIGH_VALUE_PYPI_PACKAGES, HIGH_VALUE_CRATES
+            
+            npm_count = package_miner.mine_npm_packages(
+                HIGH_VALUE_NPM_PACKAGES[:npm_packages], 
+                limit_per_package=limit_per_package
+            )
+            mining_status["progress"] = npm_packages
+            mining_status["message"] = f"Mined {npm_count} npm interventions"
+            
+            pypi_count = package_miner.mine_pypi_packages(
+                HIGH_VALUE_PYPI_PACKAGES[:pypi_packages],
+                limit_per_package=limit_per_package
+            )
+            mining_status["progress"] = npm_packages + pypi_packages
+            mining_status["message"] = f"Mined {npm_count} npm, {pypi_count} PyPI interventions"
+            
+            crates_count = package_miner.mine_crates_packages(
+                HIGH_VALUE_CRATES[:crates],
+                limit_per_package=limit_per_package
+            )
+            mining_status["progress"] = npm_packages + pypi_packages + crates
+            mining_status["message"] = f"Mined {npm_count} npm, {pypi_count} PyPI, {crates_count} crate interventions"
+            
+            mining_status["in_progress"] = False
+            mining_status["message"] = f"Package mining complete: {npm_count + pypi_count + crates_count} total interventions"
+            
+        except Exception as e:
+            mining_status["in_progress"] = False
+            mining_status["message"] = f"Error: {str(e)}"
+    
+    thread = threading.Thread(target=mine_packages)
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({"status": "started", "message": "Package mining started"})
 
 @app.route('/radar')
 def catacomb_radar():
