@@ -422,15 +422,15 @@
             );
         }
 
-        // Intervention View (Investment Memos)
+        // Intervention View with Repo Passport
         function InterventionView() {
             const [interventions, setInterventions] = useState([]);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
+            const [expandedId, setExpandedId] = useState(null);
 
             async function loadInterventions() {
-                setLoading(true);
-                setError(null);
+                setLoading(true); setError(null);
                 try {
                     const res = await fetch(`${API_BASE_URL}/api/interventions?limit=200`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -441,9 +441,7 @@
                     console.error('Interventions load failed:', err);
                     setError(err.message);
                     setInterventions([]);
-                } finally {
-                    setLoading(false);
-                }
+                } finally { setLoading(false); }
             }
 
             useEffect(() => { loadInterventions(); }, []);
@@ -451,27 +449,23 @@
             if (loading) {
                 return (
                     <div className="max-w-7xl mx-auto px-6 py-8">
-                        <h2 className="text-3xl font-bold mb-6 text-orange">Intervention Opportunities</h2>
-                        <div className="space-y-4">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <div key={i} className="card-premium p-6 loading-skeleton h-64"></div>
-                            ))}
-                        </div>
+                        <h2 className="text-3xl font-bold mb-6 text-orange">Intervention Ledger</h2>
+                        <LoadingSkeleton count={5} height={120} />
                     </div>
                 );
             }
 
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <h2 className="text-3xl font-bold mb-2 text-orange">Intervention Opportunities</h2>
-                    <p className="text-stone mb-6">Ranked by expected value created per engineering day</p>
+                    <h2 className="text-3xl font-bold mb-2 text-orange">Intervention Ledger</h2>
+                    <p className="text-stone mb-6">{interventions.length.toLocaleString()} tracked interventions with full repo passport and evidence trace</p>
                     {error && (
                         <div className="mb-4 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
                             <p className="text-crimson text-sm font-medium">Error: {error}</p>
                             <button onClick={loadInterventions} className="mt-2 text-xs text-orange hover:text-gold underline">Retry</button>
                         </div>
                     )}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {interventions.length === 0 ? (
                             <div className="card-premium p-12 text-center">
                                 <p className="text-stone text-lg">No interventions available</p>
@@ -479,38 +473,98 @@
                                 <button onClick={loadInterventions} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Refresh</button>
                             </div>
                         ) : (
-                            interventions.map((item, index) => (
-                                <div key={`${item.repo}-${index}`} className="card-premium p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="metric-value text-xl text-orange">#{index + 1}</span>
-                                                <h3 className="text-lg font-semibold">{item.repo}</h3>
+                            interventions.map((item, index) => {
+                                const before = typeof item.before_state === 'object' ? item.before_state : {};
+                                const after = typeof item.after_state === 'object' ? item.after_state : null;
+                                const metrics = typeof item.outcome_metrics === 'object' ? item.outcome_metrics : null;
+                                const isOpen = expandedId === item.record_id;
+                                return (
+                                    <div key={item.record_id || index} className={`card-premium p-5 ${isOpen ? 'border-orange/40' : ''}`}>
+                                        <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpandedId(isOpen ? null : item.record_id)}>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                    <span className="metric-value text-sm text-orange">#{index + 1}</span>
+                                                    <h3 className="text-base font-semibold truncate">{item.asset_id}</h3>
+                                                    <span className={`badge ${item.status === 'verified' ? 'badge-verified' : item.status === 'failed' ? 'badge-risk' : 'badge-undervalued'}`}>{item.status}</span>
+                                                    <span className="badge badge-undervalued">{item.verification_status}</span>
+                                                </div>
+                                                <p className="text-stone text-sm truncate">{item.intervention_description || item.intervention_type}</p>
                                             </div>
-                                            <p className="text-stone text-sm mb-3">{item.repo_data?.description || 'No description'}</p>
-                                            <div className="bg-graphite/50 rounded-lg p-3 border border-orange/10">
-                                                <p className="text-orange text-xs font-medium mb-1 uppercase tracking-wider">Investment Thesis</p>
-                                                <p className="text-warm-white text-sm">
-                                                    Execute {item.best_intervention?.name || 'intervention'} to unlock 
-                                                    ${item.value_per_day?.toFixed(2)} per engineering day.
-                                                </p>
+                                            <div className="text-right ml-4 flex-shrink-0">
+                                                <p className="metric-value text-xl text-gold">${item.predicted_value?.toLocaleString()}</p>
+                                                <p className="text-xs text-stone">predicted value</p>
                                             </div>
                                         </div>
-                                        <div className="text-right ml-6">
-                                            <p className="metric-value text-3xl text-gold glow-gold">
-                                                ${item.value_per_day?.toFixed(2) || '0.00'}
-                                            </p>
-                                            <p className="text-xs text-stone">Value/Day</p>
+                                        <div className="mt-3 grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Stars</p><p className="font-mono text-warm-white">{before.stars?.toLocaleString() || '—'}</p></div>
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Lang</p><p className="font-mono text-warm-white">{before.language || '—'}</p></div>
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Issues</p><p className="font-mono text-warm-white">{before.issues?.toLocaleString() || '—'}</p></div>
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Bus Factor</p><p className="font-mono text-warm-white">{before.bus_factor || '—'}</p></div>
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Coverage</p><p className="font-mono text-warm-white">{before.test_coverage != null ? before.test_coverage + '%' : '—'}</p></div>
+                                            <div className="bg-graphite/40 rounded p-2"><p className="text-stone uppercase tracking-wider">Effort</p><p className="font-mono text-warm-white">{item.planned_effort_days}d</p></div>
                                         </div>
+                                        {isOpen && (
+                                            <div className="mt-4 pt-4 border-t border-orange/10 space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div className="bg-graphite/30 rounded-lg p-3">
+                                                        <p className="text-xs text-stone uppercase tracking-wider mb-1">Prediction</p>
+                                                        <p className="font-mono text-warm-white">${item.predicted_value?.toLocaleString()}</p>
+                                                        <p className="text-xs text-stone mt-1">Prob: {(item.predicted_probability * 100)?.toFixed(0)}%</p>
+                                                        <p className="text-xs text-stone">Risk: {(item.predicted_risk * 100)?.toFixed(0)}%</p>
+                                                    </div>
+                                                    {metrics && (
+                                                        <div className="bg-graphite/30 rounded-lg p-3">
+                                                            <p className="text-xs text-stone uppercase tracking-wider mb-1">Outcome</p>
+                                                            <p className="font-mono text-gold">${metrics.actual_value?.toLocaleString()}</p>
+                                                            <p className="text-xs text-stone mt-1">Delta: {metrics.value_delta_percent}%</p>
+                                                            <p className="text-xs text-stone">Adoption: {metrics.adoption_rate}%</p>
+                                                        </div>
+                                                    )}
+                                                    <div className="bg-graphite/30 rounded-lg p-3">
+                                                        <p className="text-xs text-stone uppercase tracking-wider mb-1">Developer</p>
+                                                        <p className="font-mono text-warm-white">{item.developer_username || '—'}</p>
+                                                        <p className="text-xs text-stone mt-1">ID: {item.developer_id || '—'}</p>
+                                                        <p className="text-xs text-stone">Created: {item.created_at?.split('T')[0]}</p>
+                                                    </div>
+                                                </div>
+                                                {after && (
+                                                    <div>
+                                                        <p className="text-xs text-orange uppercase tracking-wider mb-2">Before → After</p>
+                                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                                            {['stars','forks','issues','bus_factor','test_coverage','documentation_score'].map(k => (
+                                                                <div key={k} className="bg-graphite/40 rounded p-2">
+                                                                    <p className="text-stone capitalize">{k.replace('_',' ')}</p>
+                                                                    <p className="font-mono text-warm-white">
+                                                                        {before[k]?.toLocaleString() || '—'}<span className="text-stone mx-1">→</span>
+                                                                        <span className={after[k] > (before[k]||0) ? 'text-green-400' : after[k] < (before[k]||0) ? 'text-crimson' : 'text-stone'}>{after[k]?.toLocaleString()}</span>
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="bg-graphite/20 rounded-lg p-3">
+                                                    <p className="text-xs text-orange uppercase tracking-wider mb-2">Evidence Trace</p>
+                                                    <div className="font-mono text-xs space-y-1">
+                                                        <div className="flex gap-2"><span className="text-stone w-24">Record:</span><span className="text-warm-white">{item.record_id}</span></div>
+                                                        <div className="flex gap-2"><span className="text-stone w-24">Before Hash:</span><span className="text-warm-white">{item.before_hash}</span></div>
+                                                        <div className="flex gap-2"><span className="text-stone w-24">After Hash:</span><span className="text-warm-white">{item.after_hash || '—'}</span></div>
+                                                        <div className="flex gap-2"><span className="text-stone w-24">Intervention:</span><span className="text-warm-white">{item.intervention_hash}</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {!isOpen && (
+                                            <div className="mt-2 text-xs text-stone flex gap-4">
+                                                <span>Prob: {(item.predicted_probability * 100)?.toFixed(0)}%</span>
+                                                <span>Risk: {(item.predicted_risk * 100)?.toFixed(0)}%</span>
+                                                <span>Dev: {item.developer_username || '—'}</span>
+                                                <span className="text-orange cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); setExpandedId(item.record_id); }}>▼ Expand for full passport</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        <MetricMini label="Effort Days" value={item.total_effort_days} />
-                                        <MetricMini label="Success Probability" value={`${((item.best_intervention?.probability || 0.5) * 100).toFixed(0)}%`} />
-                                        <MetricMini label="Value Delta" value={`${item.value_delta?.value_delta_percent?.toFixed(0)}%`} />
-                                        <MetricMini label="Risk Level" value="Medium" />
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
