@@ -18,7 +18,7 @@ from universe_model import UniverseModel, UniverseTier
 from value_delta import ValueDeltaCalculator
 from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
-from auth import verify_token
+from auth import verify_token, get_current_user, UserRole
 
 # Configure logging
 logging.basicConfig(
@@ -273,6 +273,36 @@ def analyze_user():
 def health():
     """Health check endpoint."""
     return jsonify({"status": "healthy"})
+
+
+@app.route('/api/user')
+def get_user_info():
+    """Get current user info and role."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    
+    if not token:
+        return jsonify({
+            "authenticated": False,
+            "user": None,
+            "role": None
+        })
+    
+    payload = verify_token(token)
+    if not payload:
+        return jsonify({
+            "authenticated": False,
+            "user": None,
+            "role": None
+        })
+    
+    return jsonify({
+        "authenticated": True,
+        "user": {
+            "id": payload.get('user_id'),
+            "email": payload.get('email')
+        },
+        "role": payload.get('role')
+    })
 
 
 # Intervention Lifecycle API
