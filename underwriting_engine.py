@@ -25,6 +25,7 @@ CSV = Liquidation Value
 
 from __future__ import annotations
 
+import os
 from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
@@ -36,6 +37,8 @@ from collateral_packet import (
     RiskRegister,
     ProofLevel,
 )
+
+from dollarfs_secure import scan_directory, secure_valuation_summary, FileTrustTier
 
 
 class UnderwritingEngine:
@@ -273,9 +276,11 @@ class UnderwritingEngine:
         """
         What would it cost to recreate this work from scratch?
         Rewards engineering labor and complexity.
+        Uses DollarFS secure scanning when local path is available.
         """
-        # Estimate LOC from file count and size
-        estimated_loc = self._estimate_loc(asset.file_count, asset.total_size_bytes)
+        # Estimate LOC from file count and size (secure scan if local path known)
+        local_path = repo_data.get("local_path")
+        estimated_loc = self._estimate_loc(asset.file_count, asset.total_size_bytes, local_path)
 
         # Base rate by primary language
         lang = (asset.primary_language or "unknown").lower()
@@ -589,12 +594,29 @@ class UnderwritingEngine:
             return Decimal("0.55")
         return Decimal("0.40")
 
-    def _estimate_loc(self, file_count: int, total_size_bytes: int) -> int:
-        """Rough LOC estimate from file count and total size."""
+    def _estimate_loc(self, file_count: int, total_size_bytes: int, local_path: Optional[str] = None) -> int:
+        """
+        Rough LOC estimate from file count and total size.
+        If local_path is provided, uses DollarFS secure scanning for
+        anti-inflation, entropy-checked, trust-tier-capped SLOC.
+        """
         if file_count == 0:
             return 0
+
+        # Secure scan path: use DollarFS when local directory is available
+        if local_path and os.path.isdir(local_path):
+            try:
+                metrics = scan_directory(local_path)
+                summary = secure_valuation_summary(metrics)
+                trusted_sloc = summary.get("trusted_sloc", 0)
+                if trusted_sloc > 0:
+                    return trusted_sloc
+            except Exception:
+                pass  # Fall back to heuristic on any error
+
+        # Fallback heuristic (vulnerable to sparse-file inflation —
+        # only used when no local path is available)
         avg_file_size = total_size_bytes / file_count
-        # Rough estimate: average 50 bytes per LOC
         loc_per_file = max(10, int(avg_file_size / 50))
         return file_count * loc_per_file
 
