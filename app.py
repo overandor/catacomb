@@ -6,8 +6,9 @@ import json
 import time
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, render_template, session, redirect, url_for
 from flask_cors import CORS
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from orchestrator import CatacombOrchestrator
 from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
 from repo_valuation import RepoValuation
@@ -16,6 +17,8 @@ from repo_dataset import get_expanded_repos
 from universe_model import UniverseModel, UniverseTier
 from value_delta import ValueDeltaCalculator
 from ecosystem_kpis import EcosystemKPIs
+from oauth import init_oauth, get_oauth_manager, OAuthProvider
+from auth import verify_token
 
 # Configure logging
 logging.basicConfig(
@@ -29,7 +32,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 CORS(app)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Initialize OAuth
+init_oauth(app)
 
 # Global orchestrator instance
 orchestrator = None
@@ -48,6 +60,41 @@ discovery_cache = {}
 CACHE_TTL = 300  # 5 minutes
 
 
+class User:
+    """Simple user class for Flask-Login."""
+    
+    def __init__(self, user_data):
+        self.id = str(user_data['id'])
+        self.email = user_data['email']
+        self.name = user_data['name']
+        self.role = user_data['role']
+        self.created_at = user_data.get('created_at')
+        self.picture = user_data.get('picture')
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_active(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
+    
+    def get_id(self):
+        return self.id
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user for Flask-Login."""
+    from database import get_database
+    db = get_database()
+    users = db.select('users', where={'id': int(user_id)})
+    if users:
+        return User(users[0])
+    return None
+
+
 def get_orchestrator():
     """Get or create orchestrator instance."""
     global orchestrator
@@ -59,8 +106,93 @@ def get_orchestrator():
 
 @app.route('/')
 def index():
-    """Serve the React app."""
-    return send_from_directory('static', 'index.html')
+    """Serve the landing page."""
+    return render_template('landing.html')
+
+
+@app.route('/login')
+def login():
+    """Serve login page."""
+    return render_template('login.html')
+
+
+@app.route('/auth/google')
+def google_login():
+    """Initiate Google OAuth login."""
+    try:
+        oauth_manager = get_oauth_manager()
+        return oauth_manager.get_google_login_url()
+    except ValueError as e:
+        logger.error(f"Google OAuth error: {e}")
+        return render_template('login.html', error="Google OAuth not configured")
+
+
+@app.route('/auth/github')
+def github_login():
+    """Initiate GitHub OAuth login."""
+    try:
+        oauth_manager = get_oauth_manager()
+        return oauth_manager.get_github_login_url()
+    except ValueError as e:
+        logger.error(f"GitHub OAuth error: {e}")
+        return render_template('login.html', error="GitHub OAuth not configured")
+
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback."""
+    provider = request.args.get('provider')
+    
+    try:
+        oauth_manager = get_oauth_manager()
+        
+        if provider == OAuthProvider.GOOGLE:
+            result = oauth_manager.handle_google_callback()
+        elif provider == OAuthProvider.GITHUB:
+            result = oauth_manager.handle_github_callback()
+        else:
+            return render_template('login.html', error="Invalid OAuth provider")
+        
+        # Login user
+        user = User(result['user'])
+        login_user(user)
+        
+        # Store JWT token in session
+        session['token'] = result['token']
+        
+        logger.info(f"User logged in via {provider}: {user.email}")
+        return redirect(url_for('profile'))
+        
+    except Exception as e:
+        logger.error(f"OAuth callback error: {e}")
+        return render_template('login.html', error="Authentication failed")
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    """Serve user profile page."""
+    from database import get_database
+    db = get_database()
+    
+    # Get user stats (placeholder for now)
+    stats = {
+        'interventions_viewed': 0,
+        'assets_analyzed': 0,
+        'swipes_completed': 0
+    }
+    
+    return render_template('profile.html', user=current_user, stats=stats)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Logout user."""
+    logger.info(f"User logged out: {current_user.email}")
+    logout_user()
+    session.clear()
+    return redirect(url_for('index'))
 
 
 @app.route('/api/analyze/repo/<owner>/<repo>')

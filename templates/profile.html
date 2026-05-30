@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Catacomb</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--volcanic-graphite);
+            border: 2px solid var(--forged-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--white);
+        }
+        
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .profile-info h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 8px;
+        }
+        
+        .profile-email {
+            color: var(--warm-stone);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .profile-role {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            border-radius: 4px;
+            color: var(--forged-orange);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .profile-section {
+            background: var(--volcanic-graphite);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .profile-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 16px;
+        }
+        
+        .profile-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        
+        .profile-stat {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 16px;
+        }
+        
+        .profile-stat-label {
+            color: var(--warm-stone);
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .profile-stat-value {
+            color: var(--white);
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .profile-button {
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .profile-button:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .profile-button.danger {
+            border-color: rgba(220, 38, 38, 0.3);
+            color: #f87171;
+        }
+        
+        .profile-button.danger:hover {
+            background: rgba(220, 38, 38, 0.1);
+        }
+        
+        .profile-button.primary {
+            background: var(--forged-orange);
+            border-color: var(--forged-orange);
+            color: var(--obsidian-black);
+        }
+        
+        .profile-button.primary:hover {
+            background: rgba(255, 107, 53, 0.8);
+        }
+        
+        .connected-accounts {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .connected-account {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+        
+        .connected-account-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .connected-account-icon {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .connected-account-name {
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .connected-account-status {
+            color: var(--warm-stone);
+            font-size: 12px;
+        }
+        
+        .connected-account-status.connected {
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/ledger">Ledger</a>
+            <a href="/search">Search</a>
+            <a href="/profile" class="active">Profile</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </div>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {% if user.picture %}
+                <img src="{{ user.picture }}" alt="{{ user.name }}">
+                {% else %}
+                {{ user.name[0]|upper }}
+                {% endif %}
+            </div>
+            <div class="profile-info">
+                <h1>{{ user.name }}</h1>
+                <div class="profile-email">{{ user.email }}</div>
+                <div class="profile-role">{{ user.role|title }}</div>
+            </div>
+        </div>
+        
+        <div class="profile-section">
+            <h2>Activity Stats</h2>
+            <div class="profile-stat-grid">
+                <div class="profile-stat">
+                    <div class="profile-stat-label">Interventions Viewed</div>
+                    <div class="profile-stat-value">{{ stats.interventions_viewed or 0 }}</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-label">Assets Analyzed</div>
+                    <div class="profile-stat-value">{{ stats.assets_analyzed or 0 }}</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-label">Swipes Completed</div>
+                    <div class="profile-stat-value">{{ stats.swipes_completed or 0 }}</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-label">Member Since</div>
+                    <div class="profile-stat-value" style="font-size: 16px;">{{ user.created_at[:10] }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="profile-section">
+            <h2>Connected Accounts</h2>
+            <div class="connected-accounts">
+                <div class="connected-account">
+                    <div class="connected-account-info">
+                        <svg class="connected-account-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <div>
+                            <div class="connected-account-name">GitHub</div>
+                            <div class="connected-account-status connected">Connected</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="connected-account">
+                    <div class="connected-account-info">
+                        <svg class="connected-account-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        <div>
+                            <div class="connected-account-name">Google</div>
+                            <div class="connected-account-status connected">Connected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="profile-actions">
+            <button class="profile-button primary">Edit Profile</button>
+            <button class="profile-button">Export Data</button>
+            <button class="profile-button danger">Delete Account</button>
+        </div>
+    </div>
+</body>
+</html>
