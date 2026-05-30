@@ -167,9 +167,16 @@ class DeductionSchedule:
     final_collateral_support: Decimal = Decimal("0")
 
     def to_dict(self) -> Dict[str, Any]:
+        def _clean(val):
+            if isinstance(val, Decimal):
+                return str(val.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
+            if isinstance(val, dict):
+                return {k: _clean(v) for k, v in val.items()}
+            return val
+
         return {
             "base_strategic_value": str(self.base_strategic_value),
-            "deductions": self.deductions,
+            "deductions": [_clean(d) for d in self.deductions],
             "final_collateral_support": str(self.final_collateral_support),
         }
 
@@ -305,6 +312,10 @@ class AssetRecord:
     file_count: int = 0
     total_size_bytes: int = 0
     git_commit_snapshot: Optional[str] = None
+
+    # Contributors
+    contributor_list: List[str] = field(default_factory=list)
+    marketability_score: int = 0  # 0-100, external signal
 
     # Proof statuses
     hash_manifest: Optional[HashManifest] = None

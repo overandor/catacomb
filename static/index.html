@@ -1534,42 +1534,282 @@
 
         // Review Cards View
         function ReviewCardsView() {
+            const [owner, setOwner] = useState('');
+            const [repo, setRepo] = useState('');
+            const [analysis, setAnalysis] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [history, setHistory] = useState([]);
+
+            async function analyzeAsset() {
+                if (!owner || !repo) return;
+                setLoading(true); setError(null); setAnalysis(null);
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/collateral/analyze`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ owner, repo })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+                    setAnalysis(data);
+                    setHistory(prev => [{ owner, repo, timestamp: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            const report = analysis?.collateral_ops_analysis || {};
+            const financeability = report.financeability_report || {};
+            const valuation = report.valuation || {};
+
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-orange">Professional Review Cards</h2>
-                    <p className="text-stone mb-6">Generate and manage professional review cards for software assets.</p>
-                    <div className="card-premium p-12 text-center">
-                        <p className="text-stone">Review cards are generated through the Underwriter evaluation process.</p>
-                        <p className="text-stone text-sm mt-2">Navigate to the Underwriter view to evaluate assets and generate review cards.</p>
+                    <p className="text-stone mb-6">Generate asset appraisal review cards from live GitHub data.</p>
+
+                    <div className="card-premium p-6 mb-6">
+                        <div className="flex gap-3 mb-4">
+                            <input value={owner} onChange={e => setOwner(e.target.value)} placeholder="owner" className="flex-1 bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" />
+                            <span className="text-stone self-center">/</span>
+                            <input value={repo} onChange={e => setRepo(e.target.value)} placeholder="repo" className="flex-1 bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" />
+                            <button onClick={analyzeAsset} disabled={loading} className="px-6 py-3 bg-orange/20 border border-orange/30 text-orange rounded-lg hover:bg-orange/30 disabled:opacity-50 transition-all">{loading ? 'Analyzing...' : 'Generate Card'}</button>
+                        </div>
+                        {error && <p className="text-crimson text-sm">{error}</p>}
+                        {history.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                <span className="text-stone text-xs">Recent:</span>
+                                {history.map((h, i) => (
+                                    <button key={i} onClick={() => { setOwner(h.owner); setRepo(h.repo); }} className="text-xs text-orange hover:text-gold underline">{h.owner}/{h.repo}</button>
+                                ))}
+                            </div>
+                        )}
                     </div>
+
+                    {analysis && (
+                        <div className="card-premium p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-xl font-bold">{owner}/{repo}</h3>
+                                    <p className="text-stone text-sm">{analysis.repo_data?.description || ''}</p>
+                                </div>
+                                <span className="badge badge-verified">Review Card</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                                <div className="bg-graphite/40 rounded p-3 text-center">
+                                    <p className="metric-value text-xl text-orange">{financeability.financeability_score || 'N/A'}</p>
+                                    <p className="text-xs text-stone">Financeability</p>
+                                </div>
+                                <div className="bg-graphite/40 rounded p-3 text-center">
+                                    <p className="metric-value text-xl text-gold">{valuation.valuation_range?.median || 'N/A'}</p>
+                                    <p className="text-xs text-stone">Valuation</p>
+                                </div>
+                                <div className="bg-graphite/40 rounded p-3 text-center">
+                                    <p className="metric-value text-xl text-warm-white">{valuation.confidence_level || 'N/A'}</p>
+                                    <p className="text-xs text-stone">Confidence</p>
+                                </div>
+                                <div className="bg-graphite/40 rounded p-3 text-center">
+                                    <p className="metric-value text-xl text-green-400">{report.one_best_next_action || 'N/A'}</p>
+                                    <p className="text-xs text-stone">Next Action</p>
+                                </div>
+                            </div>
+
+                            {financeability.blockers?.length > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-orange text-xs uppercase tracking-wider mb-2">Blockers</p>
+                                    <div className="space-y-1">
+                                        {financeability.blockers.map((b, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-sm text-stone"><span className="w-1.5 h-1.5 rounded-full bg-crimson"></span>{b}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {report.recommended_actions?.length > 0 && (
+                                <div>
+                                    <p className="text-green-400 text-xs uppercase tracking-wider mb-2">Recommended Actions</p>
+                                    <div className="space-y-1">
+                                        {report.recommended_actions.slice(0, 5).map((a, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-sm text-stone"><span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>{a}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         }
 
         // Portfolio View
         function PortfolioView() {
+            const [repos, setRepos] = useState('');
+            const [audit, setAudit] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            async function runAudit() {
+                const lines = repos.split('\n').map(l => l.trim()).filter(Boolean);
+                const parsed = lines.map(l => {
+                    const parts = l.split('/');
+                    return parts.length === 2 ? { owner: parts[0], repo: parts[1] } : null;
+                }).filter(Boolean);
+                if (parsed.length === 0) { setError('Enter repos as owner/repo, one per line'); return; }
+                setLoading(true); setError(null); setAudit(null);
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/collateral/portfolio_audit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ repos: parsed })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+                    setAudit(data);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            const report = audit?.portfolio_report || {};
+
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <h2 className="text-3xl font-bold mb-2 text-orange">Portfolio</h2>
-                    <p className="text-stone mb-6">Manage your software asset portfolio.</p>
-                    <div className="card-premium p-12 text-center">
-                        <p className="text-stone">Portfolio management requires authentication.</p>
-                        <p className="text-stone text-sm mt-2">Sign in to access your portfolio.</p>
+                    <h2 className="text-3xl font-bold mb-2 text-orange">Portfolio Audit</h2>
+                    <p className="text-stone mb-6">Run a portfolio-level asset improvement audit across multiple repos.</p>
+
+                    <div className="card-premium p-6 mb-6">
+                        <label className="text-stone text-xs uppercase tracking-wider mb-2 block">Repos (owner/repo, one per line)</label>
+                        <textarea value={repos} onChange={e => setRepos(e.target.value)} rows={5} placeholder="facebook/react\nvuejs/vue\nangular/angular" className="w-full bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm font-mono mb-3" />
+                        <div className="flex gap-3">
+                            <button onClick={runAudit} disabled={loading} className="px-6 py-3 bg-orange/20 border border-orange/30 text-orange rounded-lg hover:bg-orange/30 disabled:opacity-50 transition-all">{loading ? 'Auditing...' : 'Run Portfolio Audit'}</button>
+                            <button onClick={() => setRepos('')} className="px-4 py-3 bg-graphite/50 border border-orange/20 text-stone rounded-lg hover:bg-graphite transition-all">Clear</button>
+                        </div>
+                        {error && <p className="text-crimson text-sm mt-3">{error}</p>}
                     </div>
+
+                    {audit && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="card-premium p-4 text-center">
+                                    <p className="metric-value text-2xl text-gold">{report.total_assets || 0}</p>
+                                    <p className="text-xs text-stone">Assets</p>
+                                </div>
+                                <div className="card-premium p-4 text-center">
+                                    <p className="metric-value text-2xl text-orange">{report.fully_financeable || 0}</p>
+                                    <p className="text-xs text-stone">Financeable</p>
+                                </div>
+                                <div className="card-premium p-4 text-center">
+                                    <p className="metric-value text-2xl text-warm-white">{report.buyer_ready || 0}</p>
+                                    <p className="text-xs text-stone">Buyer Ready</p>
+                                </div>
+                                <div className="card-premium p-4 text-center">
+                                    <p className="metric-value text-2xl text-crimson">{report.blockers?.length || 0}</p>
+                                    <p className="text-xs text-stone">Blockers</p>
+                                </div>
+                            </div>
+
+                            {report.improvement_queue?.length > 0 && (
+                                <div className="card-premium p-6">
+                                    <h3 className="text-lg font-semibold mb-4 text-orange">Improvement Queue</h3>
+                                    <div className="space-y-2">
+                                        {report.improvement_queue.map((item, i) => (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-graphite/30 rounded">
+                                                <div>
+                                                    <p className="font-mono text-sm text-warm-white">{item.asset_id}</p>
+                                                    <p className="text-stone text-xs">{item.action} • Impact: {item.impact}</p>
+                                                </div>
+                                                <span className="badge badge-undervalued">{item.priority}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {audit.assets?.length > 0 && (
+                                <div className="card-premium p-6">
+                                    <h3 className="text-lg font-semibold mb-4 text-orange">Asset Summary</h3>
+                                    <div className="space-y-2">
+                                        {audit.assets.map((a, i) => (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-graphite/30 rounded">
+                                                <span className="font-mono text-sm">{a.asset_id}</span>
+                                                <div className="flex gap-2">
+                                                    {a.financeable && <span className="badge badge-verified">Financeable</span>}
+                                                    {a.buyer_ready && <span className="badge badge-verified">Buyer Ready</span>}
+                                                    <span className="badge badge-undervalued">{a.production_grade || 'N/A'}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         }
 
-        // Competency Graph View (Mine tier)
+        // Competency Graph View
         function CompetencyGraphView() {
+            const [jobText, setJobText] = useState('');
+            const [parsed, setParsed] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            async function parseJob() {
+                if (!jobText.trim()) return;
+                setLoading(true);
+                await new Promise(r => setTimeout(r, 800));
+                const text = jobText.toLowerCase();
+                const skills = [];
+                const skillMap = {
+                    'python': 'Python', 'javascript': 'JavaScript', 'typescript': 'TypeScript',
+                    'react': 'React', 'node': 'Node.js', 'docker': 'Docker', 'kubernetes': 'Kubernetes',
+                    'aws': 'AWS', 'gcp': 'GCP', 'azure': 'Azure', 'sql': 'SQL', 'postgres': 'PostgreSQL',
+                    'redis': 'Redis', 'kafka': 'Kafka', 'graphql': 'GraphQL', 'rest': 'REST API',
+                    'ci/cd': 'CI/CD', 'terraform': 'Terraform', 'machine learning': 'ML/AI',
+                    'llm': 'LLMs', 'data engineering': 'Data Engineering', 'security': 'Security'
+                };
+                Object.entries(skillMap).forEach(([key, val]) => {
+                    if (text.includes(key)) skills.push(val);
+                });
+                const levels = ['junior', 'mid', 'senior', 'staff', 'principal', 'lead'];
+                const level = levels.find(l => text.includes(l)) || 'unspecified';
+                setParsed({ skills, level, raw: jobText.length });
+                setLoading(false);
+            }
+
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-gold">Competency Graph</h2>
-                    <p className="text-stone mb-6">Manage the professional competency graph derived from job descriptions.</p>
-                    <div className="card-premium p-12 text-center">
-                        <p className="text-stone">Competency graph management requires admin access.</p>
-                        <p className="text-stone text-sm mt-2">This feature is available in the Mine tier.</p>
+                    <p className="text-stone mb-6">Extract competency signals from job descriptions to map the talent landscape.</p>
+
+                    <div className="card-premium p-6 mb-6">
+                        <label className="text-stone text-xs uppercase tracking-wider mb-2 block">Job Description</label>
+                        <textarea value={jobText} onChange={e => setJobText(e.target.value)} rows={8} placeholder="Paste a job description here to extract competencies, skills, and seniority signals..." className="w-full bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm mb-3" />
+                        <button onClick={parseJob} disabled={loading} className="px-6 py-3 bg-orange/20 border border-orange/30 text-orange rounded-lg hover:bg-orange/30 disabled:opacity-50 transition-all">{loading ? 'Parsing...' : 'Extract Competencies'}</button>
                     </div>
+
+                    {parsed && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="card-premium p-6">
+                                <h3 className="text-lg font-semibold mb-3 text-orange">Extracted Skills ({parsed.skills.length})</h3>
+                                {parsed.skills.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {parsed.skills.map((s, i) => <span key={i} className="badge badge-verified">{s}</span>)}
+                                    </div>
+                                ) : <p className="text-stone text-sm">No known skills detected.</p>}
+                            </div>
+                            <div className="card-premium p-6">
+                                <h3 className="text-lg font-semibold mb-3 text-orange">Seniority Signal</h3>
+                                <p className="text-warm-white font-mono text-lg capitalize">{parsed.level}</p>
+                                <p className="text-stone text-xs mt-2">{parsed.raw} characters analyzed</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

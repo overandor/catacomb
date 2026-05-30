@@ -1145,10 +1145,10 @@ def collateral_analyze():
     """Run full CollateralOps appraisal on a repo."""
     try:
         data = request.get_json() or {}
-        owner = data.get('owner')
-        repo = data.get('repo')
-        if not owner or not repo:
-            return jsonify({"error": "owner and repo required"}), 400
+        owner, repo = _validate_owner_repo(data.get('owner'), data.get('repo'))
+    except ValueError as e:
+        return _safe_error_response(str(e), 400, log_exception=False)
+    try:
         orch = get_orchestrator()
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
@@ -1156,8 +1156,7 @@ def collateral_analyze():
         analysis = asset_improvement_agent.analyze_single_asset(asset, repo_data)
         return jsonify({"collateral_ops_analysis": analysis, "repo_data": repo_data})
     except Exception as e:
-        logger.error(f"Collateral analyze error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("analysis_failed")
 
 
 @app.route('/api/collateral/lender_packet', methods=['POST'])
@@ -1165,21 +1164,23 @@ def collateral_lender_packet():
     """Generate a lender-ready Software Collateral Packet."""
     try:
         data = request.get_json() or {}
-        owner = data.get('owner')
-        repo = data.get('repo')
+        owner, repo = _validate_owner_repo(data.get('owner'), data.get('repo'))
         borrower_verified = data.get('borrower_verified', False)
-        if not owner or not repo:
-            return jsonify({"error": "owner and repo required"}), 400
+    except ValueError as e:
+        return _safe_error_response(str(e), 400, log_exception=False)
+    try:
         orch = get_orchestrator()
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
         packet = lender_packet_gen.generate(asset, repo_data, borrower_verified)
         summary = lender_packet_gen.generate_summary_text(packet)
+        # Persist
+        collateral_registry.store_packet(packet.to_dict())
+        collateral_registry.log_event(asset.asset_id, "lender_packet_generated", {"packet_id": packet.packet_id})
         return jsonify({"packet": packet.to_dict(), "lender_summary_text": summary})
     except Exception as e:
-        logger.error(f"Lender packet error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("lender_packet_generation_failed")
 
 
 @app.route('/api/collateral/buyer_packet', methods=['POST'])
@@ -1187,22 +1188,43 @@ def collateral_buyer_packet():
     """Generate a buyer-facing acquisition packet."""
     try:
         data = request.get_json() or {}
-        owner = data.get('owner')
-        repo = data.get('repo')
+        owner, repo = _validate_owner_repo(data.get('owner'), data.get('repo'))
         asking_price = data.get('asking_price')
-        if not owner or not repo:
-            return jsonify({"error": "owner and repo required"}), 400
+    except ValueError as e:
+        return _safe_error_response(str(e), 400, log_exception=False)
+    try:
         orch = get_orchestrator()
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
         asset.owner_claim = f"github:{owner}"
-        from decimal import Decimal
         price = Decimal(str(asking_price)) if asking_price else None
         packet = buyer_packet_gen.generate(asset, repo_data, price)
+        collateral_registry.store_packet(packet.to_dict())
+        collateral_registry.log_event(asset.asset_id, "buyer_packet_generated", {"packet_id": packet.packet_id})
         return jsonify({"packet": packet.to_dict()})
     except Exception as e:
-        logger.error(f"Buyer packet error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("buyer_packet_generation_failed")
+
+
+def _fetch_repo(owner_repo: dict) -> tuple:
+    """Helper for ThreadPoolExecutor concurrent repo fetching."""
+    owner = owner_repo.get('owner')
+    repo = owner_repo.get('repo')
+    if not owner or not repo:
+        return None
+    try:
+        owner, repo = _validate_owner_repo(owner, repo)
+    except ValueError:
+        return None
+    try:
+        orch = get_orchestrator()
+        repo_data = orch.analyze_repo(owner, repo)
+        asset = _repo_data_to_asset_record(repo_data)
+        asset.owner_claim = f"github:{owner}"
+        return (asset, repo_data)
+    except Exception as e:
+        logger.warning(f"Skipping {owner}/{repo}: {e}")
+        return None
 
 
 @app.route('/api/collateral/portfolio_audit', methods=['POST'])
@@ -1211,30 +1233,26 @@ def collateral_portfolio_audit():
     try:
         data = request.get_json() or {}
         repos = data.get('repos', [])
-        if not repos:
-            return jsonify({"error": "repos list required"}), 400
+        if not repos or not isinstance(repos, list):
+            return _safe_error_response("repos list required", 400, log_exception=False)
+        if len(repos) > 50:
+            return _safe_error_response("max 50 repos per audit", 400, log_exception=False)
+
+        # Concurrent repo analysis
+        futures = [_executor.submit(_fetch_repo, item) for item in repos]
         assets = []
         repo_data_map = {}
-        orch = get_orchestrator()
-        for item in repos:
-            owner = item.get('owner')
-            repo = item.get('repo')
-            if not owner or not repo:
-                continue
-            try:
-                repo_data = orch.analyze_repo(owner, repo)
-                asset = _repo_data_to_asset_record(repo_data)
-                asset.owner_claim = f"github:{owner}"
+        for future in futures:
+            result = future.result()
+            if result:
+                asset, repo_data = result
                 assets.append(asset)
                 repo_data_map[asset.asset_id] = repo_data
-            except Exception as e:
-                logger.warning(f"Skipping {owner}/{repo}: {e}")
-                continue
+
         report = asset_improvement_agent.run_portfolio_audit(assets, repo_data_map)
         return jsonify({"portfolio_report": report.to_dict(), "assets": [a.to_dict() for a in assets]})
     except Exception as e:
-        logger.error(f"Portfolio audit error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("portfolio_audit_failed")
 
 
 @app.route('/api/collateral/financeability', methods=['POST'])
@@ -1242,10 +1260,10 @@ def collateral_financeability():
     """Deep financeability analysis for a single asset."""
     try:
         data = request.get_json() or {}
-        owner = data.get('owner')
-        repo = data.get('repo')
-        if not owner or not repo:
-            return jsonify({"error": "owner and repo required"}), 400
+        owner, repo = _validate_owner_repo(data.get('owner'), data.get('repo'))
+    except ValueError as e:
+        return _safe_error_response(str(e), 400, log_exception=False)
+    try:
         orch = get_orchestrator()
         repo_data = orch.analyze_repo(owner, repo)
         asset = _repo_data_to_asset_record(repo_data)
@@ -1258,8 +1276,7 @@ def collateral_financeability():
             "one_best_next_action": analysis.get("one_best_next_action"),
         })
     except Exception as e:
-        logger.error(f"Financeability error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("financeability_analysis_failed")
 
 
 @app.route('/api/collateral/agent_audit', methods=['POST'])
@@ -1270,12 +1287,11 @@ def collateral_agent_audit():
         agent_name = data.get('agent_name', 'unknown')
         directory = data.get('directory')
         if not directory or not os.path.isdir(directory):
-            return jsonify({"error": "valid directory required"}), 400
+            return _safe_error_response("valid directory required", 400, log_exception=False)
         report = agent_work_auditor.audit_directory(agent_name, directory)
         return jsonify({"agent_labor_report": report.to_dict(), "summary_text": report.summary_text()})
     except Exception as e:
-        logger.error(f"Agent audit error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("agent_audit_failed")
 
 
 @app.route('/api/collateral/balance_sheet', methods=['POST'])
@@ -1284,25 +1300,21 @@ def collateral_balance_sheet():
     try:
         data = request.get_json() or {}
         repos = data.get('repos', [])
-        if not repos:
-            return jsonify({"error": "repos list required"}), 400
+        if not repos or not isinstance(repos, list):
+            return _safe_error_response("repos list required", 400, log_exception=False)
+        if len(repos) > 50:
+            return _safe_error_response("max 50 repos per audit", 400, log_exception=False)
+
+        futures = [_executor.submit(_fetch_repo, item) for item in repos]
         assets = []
         repo_data_map = {}
-        orch = get_orchestrator()
-        for item in repos:
-            owner = item.get('owner')
-            repo = item.get('repo')
-            if not owner or not repo:
-                continue
-            try:
-                repo_data = orch.analyze_repo(owner, repo)
-                asset = _repo_data_to_asset_record(repo_data)
-                asset.owner_claim = f"github:{owner}"
+        for future in futures:
+            result = future.result()
+            if result:
+                asset, repo_data = result
                 assets.append(asset)
                 repo_data_map[asset.asset_id] = repo_data
-            except Exception as e:
-                logger.warning(f"Skipping {owner}/{repo}: {e}")
-                continue
+
         asset_improvement_agent.run_portfolio_audit(assets, repo_data_map)
         total_replacement = Decimal("0")
         total_as_is = Decimal("0")
@@ -1352,8 +1364,7 @@ def collateral_balance_sheet():
             "assets": [a.to_dict() for a in assets],
         })
     except Exception as e:
-        logger.error(f"Balance sheet error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error_response("balance_sheet_generation_failed")
 
 
 if __name__ == "__main__":
