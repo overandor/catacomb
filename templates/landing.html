@@ -341,6 +341,139 @@
             opacity: 0.4;
         }
 
+        /* SDK Section */
+        .sdk-section {
+            padding: 80px 32px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .sdk-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .sdk-header h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .sdk-header p {
+            font-size: 16px;
+            color: var(--warm-stone);
+        }
+
+        .sdk-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sdk-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--warm-stone);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .sdk-tab:hover {
+            color: #fff;
+        }
+
+        .sdk-tab.active {
+            color: var(--molten-gold);
+            border-bottom-color: var(--molten-gold);
+        }
+
+        .sdk-content {
+            position: relative;
+        }
+
+        .sdk-pane {
+            display: none;
+        }
+
+        .sdk-pane.active {
+            display: block;
+        }
+
+        .sdk-description {
+            margin-bottom: 24px;
+        }
+
+        .sdk-description h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .sdk-description p {
+            font-size: 14px;
+            color: var(--warm-stone);
+            line-height: 1.6;
+        }
+
+        .code-window {
+            background: #0d0d14;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .code-title {
+            font-size: 12px;
+            color: var(--warm-stone);
+            font-family: var(--font-mono);
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 6px;
+            color: var(--molten-gold);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .code-body {
+            padding: 24px;
+            margin: 0;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--light-stone);
+            overflow-x: auto;
+        }
+
+        .code-body code {
+            color: inherit;
+        }
+
         @media (max-width: 768px) {
             .landing-title {
                 font-size: 42px;
@@ -492,6 +625,166 @@
         </div>
     </div>
 
+    <div class="sdk-section">
+        <div class="sdk-header">
+            <h2>SDK Integration</h2>
+            <p>Programmatic access to Catacomb intelligence. Three SDKs for every use case.</p>
+        </div>
+        
+        <div class="sdk-tabs">
+            <button class="sdk-tab active" data-tab="proof">Proof of Inference</button>
+            <button class="sdk-tab" data-tab="embeddings">Asset Embeddings</button>
+            <button class="sdk-tab" data-tab="zk">ZK Collateral</button>
+        </div>
+        
+        <div class="sdk-content">
+            <div class="sdk-pane active" id="proof">
+                <div class="sdk-description">
+                    <h3>Proof of Inference SDK</h3>
+                    <p>Generate cryptographically verifiable proofs for LLM inferences. SHA-256 + HMAC-SHA256 composite hashing with ledger storage.</p>
+                </div>
+                <div class="code-window">
+                    <div class="code-header">
+                        <span class="code-title">proof_example.py</span>
+                        <button class="copy-btn" onclick="copyCode('proof-code')">Copy</button>
+                    </div>
+                    <pre class="code-body" id="proof-code"><code class="language-python">from proof_of_inference import ProofOfInference, OllamaInferenceClient
+
+# Initialize SDK
+poi = ProofOfInference()
+ollama = OllamaInferenceClient("http://localhost:11434")
+
+# Generate inference with automatic proof
+response = ollama.generate("llama3.1", "Analyze this code for security issues")
+proof = poi.generate_proof(
+    model="llama3.1",
+    prompt="Analyze this code for security issues",
+    response=response,
+    store_in_ledger=True
+)
+
+print(f"Proof ID: {proof.proof_id}")
+print(f"Hash: {proof.composite_hash}")
+print(f"Signature: {proof.signature}")
+
+# Verify proof independently
+is_valid = poi.verify_proof(proof)
+print(f"Valid: {is_valid}")</code></pre>
+                </div>
+            </div>
+            
+            <div class="sdk-pane" id="embeddings">
+                <div class="sdk-description">
+                    <h3>Asset Embeddings SDK</h3>
+                    <p>Vector similarity search across software assets. 768-dim embeddings with weighted genome, state, and intervention features.</p>
+                </div>
+                <div class="code-window">
+                    <div class="code-header">
+                        <span class="code-title">embeddings_example.py</span>
+                        <button class="copy-btn" onclick="copyCode('embeddings-code')">Copy</button>
+                    </div>
+                    <pre class="code-body" id="embeddings-code"><code class="language-python">from asset_embeddings import AssetEmbeddingGenerator, VectorDatabase, AssetSearchEngine
+from asset_abstraction import Asset, AssetGenome, CurrentState
+
+# Initialize components
+generator = AssetEmbeddingGenerator(embedding_dim=768)
+vector_db = VectorDatabase("asset_embeddings.db")
+search_engine = AssetSearchEngine(vector_db, generator)
+
+# Create asset from data
+genome = AssetGenome(
+    asset_id="langchain/langchain",
+    asset_type=AssetType.REPOSITORY,
+    primary_language="python",
+    stars=50000,
+    contributors=200
+)
+
+state = CurrentState(
+    asset_id="langchain/langchain",
+    recognition_score=85.0,
+    current_value=75.0
+)
+
+asset = Asset(
+    asset_id="langchain/langchain",
+    asset_type=AssetType.REPOSITORY,
+    source=AssetSource.GITHUB,
+    genome=genome,
+    current_state=state
+)
+
+# Index for search
+search_engine.index_asset(asset)
+
+# Find similar assets
+similar = search_engine.search_similar_assets(
+    asset_id="langchain/langchain",
+    limit=10,
+    asset_type=AssetType.REPOSITORY
+)
+
+print(f"Found {len(similar)} similar assets")</code></pre>
+                </div>
+            </div>
+            
+            <div class="sdk-pane" id="zk">
+                <div class="sdk-description">
+                    <h3>ZK Collateral SDK</h3>
+                    <p>Zero-Knowledge proofs for inference with economic collateralization. Lock collateral, generate ZK proofs, verify and unlock.</p>
+                </div>
+                <div class="code-window">
+                    <div class="code-header">
+                        <span class="code-title">zk_collateral_example.py</span>
+                        <button class="copy-btn" onclick="copyCode('zk-code')">Copy</button>
+                    </div>
+                    <pre class="code-body" id="zk-code"><code class="language-python">from zk_collateral import ZKCollateralInferenceSDK
+from decimal import Decimal
+
+# Initialize SDK
+sdk = ZKCollateralInferenceSDK(
+    ollama_base_url="http://localhost:11434",
+    liquidity_db="liquidity_memory.db"
+)
+
+# Create liquidity pool
+pool = sdk.liquidity_memory.create_pool(
+    pool_id="main_pool",
+    collateral_token="USDC",
+    initial_liquidity=Decimal("1000000"),
+    reward_rate=Decimal("0.05")
+)
+
+# Generate inference with ZK proof and collateralize
+response, zk_proof, position = sdk.collateralize_inference(
+    model="llama3.1",
+    prompt="Analyze this repository for intervention opportunities",
+    collateral_amount=Decimal("1000"),
+    collateral_token="USDC",
+    pool_id="main_pool",
+    creator="user_123",
+    unlock_conditions={"min_accuracy": 0.85}
+)
+
+print(f"Response: {response}")
+print(f"ZK Proof ID: {zk_proof.proof_id}")
+print(f"Position ID: {position.position_id}")
+print(f"Collateral Locked: {position.collateral_amount} {position.collateral_token}")
+
+# Verify and unlock collateral
+is_valid, message, unlocked_position = sdk.verify_and_unlock(
+    position_id=position.position_id,
+    model="llama3.1",
+    prompt="Analyze this repository for intervention opportunities",
+    expected_output=response
+)
+
+print(f"Unlocked: {is_valid}")</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="landing-footer">
         <p>Catacomb Software Intelligence Terminal &middot; Built for institutional-grade alpha discovery</p>
     </div>
@@ -608,6 +901,47 @@
         }, { threshold: 0.5 });
 
         statValues.forEach(el => observer.observe(el));
+
+        // SDK Tab Switching
+        const sdkTabs = document.querySelectorAll('.sdk-tab');
+        const sdkPanes = document.querySelectorAll('.sdk-pane');
+
+        sdkTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                
+                // Update tabs
+                sdkTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update panes
+                sdkPanes.forEach(pane => {
+                    pane.classList.remove('active');
+                    if (pane.id === targetTab) {
+                        pane.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Copy Code Function
+        function copyCode(elementId) {
+            const codeElement = document.getElementById(elementId);
+            const code = codeElement.textContent;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                // Find the copy button and change text temporarily
+                const copyBtn = codeElement.parentElement.querySelector('.copy-btn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
     </script>
 </body>
 </html>
