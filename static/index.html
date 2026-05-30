@@ -533,12 +533,14 @@
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <HeroSection />
+                    <div className="mb-4 p-4 bg-orange/10 border border-orange/20 rounded-lg">
+                        <p className="text-orange text-xs font-mono">Debug: repos.length = {repos.length}, loading = {loading.toString()}</p>
+                    </div>
                     <div className="space-y-4">
                         {repos.length === 0 ? (
                             <div className="card-premium p-12 text-center">
                                 <p className="text-stone text-lg">No hidden infrastructure opportunities detected</p>
                                 <p className="text-stone text-sm mt-2">Initiate mining sequence to discover assets</p>
-                                <p className="text-orange text-xs mt-4 font-mono">Debug: repos.length = {repos.length}, loading = {loading.toString()}</p>
                             </div>
                         ) : (
                             repos.map((item, index) => (
