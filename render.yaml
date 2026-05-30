@@ -24,7 +24,7 @@ services:
       - key: ENVIRONMENT
         value: production
     healthCheckPath: /api/health
-    autoDeploy: false
+    autoDeploy: true
 
   # Worker service (background mining jobs)
   - type: worker
