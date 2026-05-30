@@ -1,0 +1,13 @@
+services:
+  # Catacomb Underwriter standalone service
+  - type: web
+    name: catacomb-underwriter
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt -r requirements_database.txt
+    startCommand: gunicorn underwriter_app:app --bind 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11

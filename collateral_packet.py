@@ -470,6 +470,7 @@ class SoftwareCollateralPacket:
     outreach_plan: str = ""
     auction_listing_strategy: Optional[str] = None
     sale_memo: Optional[str] = None
+    productization_plan: Optional[str] = None
     nda_checklist: List[str] = field(default_factory=list)
     forced_sale_timeline_days: Tuple[int, int] = (45, 120)
     expected_recovery_range: Tuple[Decimal, Decimal] = (Decimal("0"), Decimal("0"))
