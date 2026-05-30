@@ -1,15 +1,17 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "pip install -r requirements.txt",
+  "outputDirectory": ".",
+  "framework": null,
+  "rewrites": [
     {
-      "src": "intervention_capture_ui.py",
-      "use": "@vercel/python"
+      "source": "/(.*)",
+      "destination": "intervention_capture_ui.py"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "intervention_capture_ui.py"
+  "functions": {
+    "app/**/*.py": {
+      "runtime": "python3.10"
     }
-  ]
+  }
 }
