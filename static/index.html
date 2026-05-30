@@ -83,6 +83,16 @@
                                     Intervention
                                 </button>
                                 <button
+                                    onClick={() => setCurrentView('radar')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        currentView === 'radar'
+                                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    Radar
+                                </button>
+                                <button
                                     onClick={() => setCurrentView('swipe')}
                                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                                         currentView === 'swipe'
@@ -854,6 +864,95 @@
             );
         }
 
+        function RadarView() {
+            const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch('/api/radar')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRepos(data.results || []);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to load radar:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return (
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/30 animate-pulse">
+                                <div className="h-6 bg-gray-700/50 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-2/3 mb-2"></div>
+                                <div className="h-4 bg-gray-700/50 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Catacomb Radar</h2>
+                    <p className="text-gray-400 mb-6">Hidden infrastructure ranked by Expected Value Created Per Engineering Day</p>
+                    {repos.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-400">No hidden infrastructure opportunities found</p>
+                            <p className="text-gray-500 text-sm mt-2">Try analyzing more repositories</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {repos.map((item, index) => (
+                                <div key={item.repo} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30 card-hover transition-all">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="text-2xl font-bold text-purple-400">#{index + 1}</span>
+                                                <h3 className="text-lg font-semibold text-white">{item.repo}</h3>
+                                            </div>
+                                            <p className="text-gray-400 text-sm">{item.repo_data.description || 'No description'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                                                ${item.value_per_day.toFixed(2)}
+                                            </div>
+                                            <p className="text-gray-400 text-xs">Value/Day</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Effort Days</p>
+                                            <p className="text-white font-semibold">{item.total_effort_days}</p>
+                                        </div>
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Value Delta</p>
+                                            <p className="text-white font-semibold">{item.value_delta.value_delta_percent.toFixed(0)}%</p>
+                                        </div>
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Transitive Deps</p>
+                                            <p className="text-white font-semibold">{item.transitive_dependency_count}</p>
+                                        </div>
+                                        <div className="bg-gray-900/50 rounded-lg p-3">
+                                            <p className="text-gray-400 text-xs mb-1">Hidden Score</p>
+                                            <p className="text-white font-semibold">{item.hidden_infrastructure_score.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/20">
+                                        <p className="text-purple-400 text-sm font-medium mb-1">Best Intervention</p>
+                                        <p className="text-white font-semibold">{item.best_intervention.name || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function App() {
             const [currentView, setCurrentView] = useState('discover');
             const [results, setResults] = useState(null);
@@ -922,6 +1021,7 @@
                         {currentView === 'trending' && <TrendingView />}
                         {currentView === 'promising' && <PromisingView />}
                         {currentView === 'intervention' && <InterventionView />}
+                        {currentView === 'radar' && <RadarView />}
                         {currentView === 'swipe' && <SwipeView />}
                         {currentView === 'search' && (
                             <>
