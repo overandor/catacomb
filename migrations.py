@@ -231,6 +231,109 @@ def create_users_table():
     print("Created users table")
 
 
+def create_request_logs_table():
+    """Create request logs table for observability."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS request_logs (
+            id SERIAL PRIMARY KEY,
+            request_id TEXT NOT NULL,
+            method TEXT NOT NULL,
+            path TEXT NOT NULL,
+            status_code INTEGER NOT NULL,
+            duration_ms REAL NOT NULL,
+            user_id TEXT,
+            error TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(timestamp)
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_request_logs_user_id ON request_logs(user_id)
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_request_logs_status_code ON request_logs(status_code)
+    """)
+    
+    conn.commit()
+    conn.close()
+    print("Created request_logs table")
+
+
+def create_job_logs_table():
+    """Create job logs table for observability."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS job_logs (
+            id SERIAL PRIMARY KEY,
+            job_id TEXT UNIQUE NOT NULL,
+            job_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            params JSONB,
+            result JSONB,
+            duration_ms REAL,
+            error TEXT,
+            user_id TEXT,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_job_logs_job_id ON job_logs(job_id)
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_job_logs_status ON job_logs(status)
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_job_logs_started_at ON job_logs(started_at)
+    """)
+    
+    conn.commit()
+    conn.close()
+    print("Created job_logs table")
+
+
+def create_rate_limit_logs_table():
+    """Create rate limit logs table for observability."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS rate_limit_logs (
+            id SERIAL PRIMARY KEY,
+            service TEXT NOT NULL,
+            limit INTEGER NOT NULL,
+            remaining INTEGER NOT NULL,
+            reset_time TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rate_limit_logs_service ON rate_limit_logs(service)
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rate_limit_logs_timestamp ON rate_limit_logs(timestamp)
+    """)
+    
+    conn.commit()
+    conn.close()
+    print("Created rate_limit_logs table")
+
+
 def migrate_all():
     """Run all migrations."""
     print("Starting database migrations...")
@@ -244,6 +347,9 @@ def migrate_all():
         create_liquidity_pools_table()
         create_historical_states_table()
         create_users_table()
+        create_request_logs_table()
+        create_job_logs_table()
+        create_rate_limit_logs_table()
         
         print("All migrations completed successfully")
     except Exception as e:
