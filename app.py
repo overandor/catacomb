@@ -20,6 +20,7 @@ from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
 from intervention_predictor import get_predictor, InterventionFeatures
+from ecosystem_graph import get_ecosystem_graph
 
 # Production imports
 import re
@@ -559,8 +560,57 @@ def get_feature_importance():
     except Exception as e:
         logger.error(f"Failed to get feature importance: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# Ecosystem Graph API
+
+@app.route('/api/ecosystem/stats', methods=['GET'])
+def get_ecosystem_stats():
+    """Get ecosystem graph statistics."""
+    try:
+        graph = get_ecosystem_graph()
+        stats = graph.get_graph_stats()
+        return jsonify(stats)
     except Exception as e:
-        logger.error(f"Failed to get training data: {str(e)}")
+        logger.error(f"Failed to get ecosystem stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ecosystem/related/<asset_id>', methods=['GET'])
+def get_related_assets(asset_id):
+    """Get assets related to a given asset."""
+    try:
+        graph = get_ecosystem_graph()
+        max_depth = request.args.get('max_depth', 2, type=int)
+        related = graph.get_related_assets(asset_id, max_depth=max_depth)
+        return jsonify({"asset_id": asset_id, "related": related})
+    except Exception as e:
+        logger.error(f"Failed to get related assets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ecosystem/central', methods=['GET'])
+def get_central_assets():
+    """Get most central assets in the ecosystem."""
+    try:
+        graph = get_ecosystem_graph()
+        top_n = request.args.get('top_n', 10, type=int)
+        central = graph.get_central_assets(top_n)
+        return jsonify({"central_assets": central})
+    except Exception as e:
+        logger.error(f"Failed to get central assets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ecosystem/communities', methods=['GET'])
+def get_communities():
+    """Get communities in the ecosystem."""
+    try:
+        graph = get_ecosystem_graph()
+        communities = graph.get_communities()
+        return jsonify({"communities": communities})
+    except Exception as e:
+        logger.error(f"Failed to get communities: {e}")
         return jsonify({"error": str(e)}), 500
 
 
