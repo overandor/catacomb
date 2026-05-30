@@ -5,6 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catacomb Alpha - Undervalued Software Assets</title>
     <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .evidence-toggle {
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            color: var(--forged-orange);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .evidence-toggle:hover {
+            background: rgba(255, 107, 53, 0.2);
+        }
+        
+        .evidence-toggle::after {
+            content: ' ▼';
+            margin-left: 6px;
+            transition: transform 0.2s ease;
+        }
+        
+        .evidence-toggle.expanded::after {
+            transform: rotate(180deg);
+        }
+        
+        .explainability-section {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .explainability-section.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .evidence-source {
+            font-size: 11px;
+            color: var(--warm-stone);
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+        
+        .evidence-source::before {
+            content: 'Source: ';
+        }
+        
+        .score-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .score-component {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .score-component-name {
+            color: var(--light-stone);
+        }
+        
+        .score-component-value {
+            color: var(--molten-gold);
+            font-weight: 600;
+        }
+        
+        .score-component-bar {
+            height: 4px;
+            background: rgba(255, 215, 0, 0.2);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .score-component-fill {
+            height: 100%;
+            background: var(--molten-gold);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+    </style>
 </head>
 <body>
     <div class="nav-container">
@@ -76,11 +173,13 @@
             </div>
             
             <ul class="radar-evidence">
-                <li>Hidden infrastructure detected</li>
-                <li>Under-recognized dependency chain</li>
-                <li>Single maintainer (bus factor = 1)</li>
-                <li>High ecosystem leverage through transitive deps</li>
+                <li>Hidden infrastructure detected <span class="evidence-source">GitHub dependency graph analysis</span></li>
+                <li>Under-recognized dependency chain <span class="evidence-source">npm package registry scan</span></li>
+                <li>Single maintainer (bus factor = 1) <span class="evidence-source">GitHub contributor history</span></li>
+                <li>High ecosystem leverage through transitive deps <span class="evidence-source">Dependency tree traversal</span></li>
             </ul>
+            
+            <button class="evidence-toggle" onclick="toggleEvidence(this)">View Evidence Trace</button>
             
             <div class="explainability-section">
                 <div class="explainability-title">Why Undervalued</div>
@@ -113,6 +212,39 @@
                         <div class="confidence-item"><span>Prediction Calibration</span><span>72%</span></div>
                     </div>
                 </div>
+                <div class="explainability-item">
+                    <div class="explainability-label">Innovation Alpha Score Breakdown</div>
+                    <div class="score-breakdown">
+                        <div class="score-component">
+                            <span class="score-component-name">Novelty Evidence</span>
+                            <span class="score-component-value">+18.5</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 85%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Market Demand</span>
+                            <span class="score-component-value">+12.3</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 65%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Trajectory Signal</span>
+                            <span class="score-component-value">+8.7</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 55%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Utility Potential</span>
+                            <span class="score-component-value">+5.7</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 40%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -138,11 +270,13 @@
             </div>
             
             <ul class="radar-evidence">
-                <li>Dormant asset with strong ecosystem leverage</li>
-                <li>Intervention alpha exceeds recognition baseline</li>
-                <li>High transitive dependency count</li>
-                <li>Verified transformation precedent found</li>
+                <li>Dormant asset with strong ecosystem leverage <span class="evidence-source">Rust ecosystem analysis</span></li>
+                <li>Intervention alpha exceeds recognition baseline <span class="evidence-source">Historical transformation data</span></li>
+                <li>High transitive dependency count <span class="evidence-source">Cargo dependency graph</span></li>
+                <li>Verified transformation precedent found <span class="evidence-source">Outcome ledger record #847</span></li>
             </ul>
+            
+            <button class="evidence-toggle" onclick="toggleEvidence(this)">View Evidence Trace</button>
             
             <div class="explainability-section">
                 <div class="explainability-title">Why Undervalued</div>
@@ -175,6 +309,39 @@
                         <div class="confidence-item"><span>Prediction Calibration</span><span>75%</span></div>
                     </div>
                 </div>
+                <div class="explainability-item">
+                    <div class="explainability-label">Innovation Alpha Score Breakdown</div>
+                    <div class="score-breakdown">
+                        <div class="score-component">
+                            <span class="score-component-name">Novelty Evidence</span>
+                            <span class="score-component-value">+14.2</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 75%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Market Demand</span>
+                            <span class="score-component-value">+10.5</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 60%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Trajectory Signal</span>
+                            <span class="score-component-value">+5.8</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 45%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Utility Potential</span>
+                            <span class="score-component-value">+2.3</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 25%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -200,11 +367,13 @@
             </div>
             
             <ul class="radar-evidence">
-                <li>Fully recognized blue-chip repository</li>
-                <li>Crowded intervention space</li>
-                <li>Maximum ecosystem recognition</li>
-                <li>Low alpha opportunity remaining</li>
+                <li>Fully recognized blue-chip repository <span class="evidence-source">GitHub star count analysis</span></li>
+                <li>Crowded intervention space <span class="evidence-source">Competitor landscape scan</span></li>
+                <li>Maximum ecosystem recognition <span class="evidence-source">NPM download metrics</span></li>
+                <li>Low alpha opportunity remaining <span class="evidence-source">Market saturation analysis</span></li>
             </ul>
+            
+            <button class="evidence-toggle" onclick="toggleEvidence(this)">View Evidence Trace</button>
             
             <div class="explainability-section">
                 <div class="explainability-title">Why Over-Recognized</div>
@@ -237,6 +406,32 @@
                         <div class="confidence-item"><span>Prediction Calibration</span><span>95%</span></div>
                     </div>
                 </div>
+                <div class="explainability-item">
+                    <div class="explainability-label">Innovation Alpha Score Breakdown</div>
+                    <div class="score-breakdown">
+                        <div class="score-component">
+                            <span class="score-component-name">Novelty Evidence</span>
+                            <span class="score-component-value">-5.2</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 15%; background: var(--crimson-risk)"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Market Demand</span>
+                            <span class="score-component-value">-4.8</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 10%; background: var(--crimson-risk)"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Trajectory Signal</span>
+                            <span class="score-component-value">-2.4</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 5%; background: var(--crimson-risk)"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -261,11 +456,13 @@
             </div>
             
             <ul class="radar-evidence">
-                <li>Fairly recognized asset</li>
-                <li>Near-zero innovation alpha</li>
-                <li>Moderate ecosystem leverage</li>
-                <li>Stable maintainer base</li>
+                <li>Fairly recognized asset <span class="evidence-source">GitHub metrics analysis</span></li>
+                <li>Near-zero innovation alpha <span class="evidence-source">Prediction model output</span></li>
+                <li>Moderate ecosystem leverage <span class="evidence-source">Dependency graph scan</span></li>
+                <li>Stable maintainer base <span class="evidence-source">Contributor history</span></li>
             </ul>
+            
+            <button class="evidence-toggle" onclick="toggleEvidence(this)">View Evidence Trace</button>
             
             <div class="explainability-section">
                 <div class="explainability-title">Why Fairly Recognized</div>
@@ -298,6 +495,32 @@
                         <div class="confidence-item"><span>Prediction Calibration</span><span>72%</span></div>
                     </div>
                 </div>
+                <div class="explainability-item">
+                    <div class="explainability-label">Innovation Alpha Score Breakdown</div>
+                    <div class="score-breakdown">
+                        <div class="score-component">
+                            <span class="score-component-name">Novelty Evidence</span>
+                            <span class="score-component-value">+1.5</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 20%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Market Demand</span>
+                            <span class="score-component-value">+1.2</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 15%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Trajectory Signal</span>
+                            <span class="score-component-value">+0.5</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 10%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -323,11 +546,13 @@
             </div>
             
             <ul class="radar-evidence">
-                <li>Dormant but valuable asset</li>
-                <li>Low recognition baseline</li>
-                <li>High intervention potential</li>
-                <li>Single maintainer creates opportunity</li>
+                <li>Dormant but valuable asset <span class="evidence-source">GitHub activity analysis</span></li>
+                <li>Low recognition baseline <span class="evidence-source">Market signal processing</span></li>
+                <li>High intervention potential <span class="evidence-source">AI integration assessment</span></li>
+                <li>Single maintainer creates opportunity <span class="evidence-source">Contributor history</span></li>
             </ul>
+            
+            <button class="evidence-toggle" onclick="toggleEvidence(this)">View Evidence Trace</button>
             
             <div class="explainability-section">
                 <div class="explainability-title">Why Undervalued</div>
@@ -360,8 +585,57 @@
                         <div class="confidence-item"><span>Prediction Calibration</span><span>62%</span></div>
                     </div>
                 </div>
+                <div class="explainability-item">
+                    <div class="explainability-label">Innovation Alpha Score Breakdown</div>
+                    <div class="score-breakdown">
+                        <div class="score-component">
+                            <span class="score-component-name">Novelty Evidence</span>
+                            <span class="score-component-value">+16.5</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 80%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Market Demand</span>
+                            <span class="score-component-value">+12.8</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 70%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Trajectory Signal</span>
+                            <span class="score-component-value">+6.2</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 50%"></div>
+                        </div>
+                        <div class="score-component">
+                            <span class="score-component-name">Utility Potential</span>
+                            <span class="score-component-value">+3.0</span>
+                        </div>
+                        <div class="score-component-bar">
+                            <div class="score-component-fill" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleEvidence(button) {
+            const card = button.closest('.radar-card');
+            const section = card.querySelector('.explainability-section');
+            
+            button.classList.toggle('expanded');
+            section.classList.toggle('visible');
+            
+            if (button.classList.contains('expanded')) {
+                button.textContent = 'Hide Evidence Trace';
+            } else {
+                button.textContent = 'View Evidence Trace';
+            }
+        }
+    </script>
 </body>
 </html>
