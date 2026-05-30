@@ -1,0 +1,386 @@
+name: Continuous Model Retraining
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_retrain:
+        description: 'Force retrain even if threshold not met'
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - 'outcome_ledger.db'
+      - 'training_data/**'
+
+jobs:
+  check-data-threshold:
+    runs-on: ubuntu-latest
+    outputs:
+      should_retrain: ${{ steps.check.outputs.should_retrain }}
+      new_records: ${{ steps.check.outputs.new_records }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Check data threshold
+        id: check
+        run: |
+          python -c "
+          import sqlite3
+          import os
+          
+          db_path = 'outcome_ledger.db'
+          if not os.path.exists(db_path):
+              print('No database found')
+              exit(1)
+          
+          conn = sqlite3.connect(db_path)
+          cursor = conn.cursor()
+          
+          # Count verified interventions
+          cursor.execute('SELECT COUNT(*) FROM interventions WHERE verification_status = \"verified\"')
+          verified_count = cursor.fetchone()[0]
+          
+          # Get last retrain timestamp
+          cursor.execute('SELECT MAX(created_at) FROM interventions')
+          last_intervention = cursor.fetchone()[0]
+          
+          conn.close()
+          
+          # Threshold: retrain if we have 100+ new verified interventions
+          # or if force_retrain is true
+          MIN_NEW_INTERVENTIONS = 100
+          
+          # For demo, always retrain if we have data
+          should_retrain = 'true' if verified_count >= 100 else 'false'
+          
+          if '${{ github.event.inputs.force_retrain }}' == 'true':
+              should_retrain = 'true'
+          
+          print(f'should_retrain={should_retrain}')
+          print(f'new_records={verified_count}')
+          "
+      
+      - name: Upload threshold result
+        run: |
+          echo "Should retrain: ${{ steps.check.outputs.should_retrain }}"
+          echo "New records: ${{ steps.check.outputs.new_records }}"
+
+  retrain-model:
+    needs: check-data-threshold
+    if: needs.check-data-threshold.outputs.should_retrain == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install scikit-learn joblib pandas
+      
+      - name: Download outcome ledger
+        run: |
+          # In production, this would download from S3 or other storage
+          echo "Using local outcome_ledger.db"
+      
+      - name: Train intervention prediction model
+        run: |
+          python -c "
+          import sqlite3
+          import json
+          import numpy as np
+          from sklearn.ensemble import RandomForestRegressor
+          from sklearn.model_selection import train_test_split
+          from sklearn.metrics import mean_absolute_error, r2_score
+          import joblib
+          from datetime import datetime
+          
+          db_path = 'outcome_ledger.db'
+          conn = sqlite3.connect(db_path)
+          conn.row_factory = sqlite3.Row
+          cursor = conn.cursor()
+          
+          # Fetch verified interventions with outcome metrics
+          cursor.execute('''
+              SELECT 
+                  asset_id,
+                  intervention_type,
+                  predicted_value,
+                  planned_effort_days,
+                  outcome_metrics,
+                  before_state,
+                  after_state
+              FROM interventions
+              WHERE verification_status = \"verified\"
+              AND outcome_metrics IS NOT NULL
+          ''')
+          
+          rows = cursor.fetchall()
+          print(f'Found {len(rows)} verified interventions with outcomes')
+          
+          if len(rows) < 50:
+              print('Not enough data for training')
+              exit(0)
+          
+          # Prepare features
+          features = []
+          targets = []
+          
+          for row in rows:
+              try:
+                  outcome_metrics = json.loads(row['outcome_metrics'])
+                  before_state = json.loads(row['before_state']) if row['before_state'] else {}
+                  after_state = json.loads(row['after_state']) if row['after_state'] else {}
+                  
+                  # Features
+                  feature = [
+                      row['predicted_value'],
+                      row['planned_effort_days'],
+                      before_state.get('stars', 0),
+                      before_state.get('forks', 0),
+                      before_state.get('contributors', 0),
+                      len(before_state.get('dependencies', [])),
+                  ]
+                  
+                  # Target: actual value
+                  target = outcome_metrics.get('actual_value', row['predicted_value'])
+                  
+                  features.append(feature)
+                  targets.append(target)
+              except Exception as e:
+                  print(f'Error processing row: {e}')
+                  continue
+          
+          if len(features) < 50:
+              print('Not enough valid features')
+              exit(0)
+          
+          X = np.array(features)
+          y = np.array(targets)
+          
+          # Split data
+          X_train, X_test, y_train, y_test = train_test_split(
+              X, y, test_size=0.2, random_state=42
+          )
+          
+          # Train model
+          model = RandomForestRegressor(
+              n_estimators=100,
+              max_depth=10,
+              random_state=42
+          )
+          model.fit(X_train, y_train)
+          
+          # Evaluate
+          y_pred = model.predict(X_test)
+          mae = mean_absolute_error(y_test, y_pred)
+          r2 = r2_score(y_test, y_pred)
+          
+          print(f'MAE: {mae:.2f}')
+          print(f'R²: {r2:.2f}')
+          
+          # Save model
+          model_path = 'models/intervention_predictor.joblib'
+          import os
+          os.makedirs('models', exist_ok=True)
+          joblib.dump(model, model_path)
+          
+          # Save metadata
+          metadata = {
+              'trained_at': datetime.utcnow().isoformat(),
+              'training_samples': len(X_train),
+              'mae': float(mae),
+              'r2': float(r2),
+              'feature_names': [
+                  'predicted_value',
+                  'planned_effort_days',
+                  'stars',
+                  'forks',
+                  'contributors',
+                  'dependency_count'
+              ]
+          }
+          
+          with open('models/intervention_predictor_metadata.json', 'w') as f:
+              json.dump(metadata, f, indent=2)
+          
+          print(f'Model saved to {model_path}')
+          print(f'Metadata saved')
+          
+          conn.close()
+          "
+      
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: intervention-predictor-model
+          path: models/
+          retention-days: 30
+      
+      - name: Create model release
+        run: |
+          # Tag the release with timestamp
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          echo "MODEL_VERSION=$TIMESTAMP" >> $GITHUB_ENV
+      
+      - name: Create model version
+        id: version
+        run: |
+          # Tag the release with timestamp
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          echo "model_version=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "Model version: $TIMESTAMP"
+      
+      - name: Deploy model to production
+        run: |
+          # In production, this would upload to S3, Vercel, or other storage
+          echo "Deploying model version ${{ steps.version.outputs.model_version }}"
+          echo "Model would be uploaded to production storage"
+      
+      - name: Update model version in config
+        run: |
+          # Update model version in application config
+          echo "Updating model version to ${{ steps.version.outputs.model_version }}"
+          # This would update a config file or environment variable
+
+  evaluate-prediction-accuracy:
+    needs: retrain-model
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download model artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: intervention-predictor-model
+          path: models/
+      
+      - name: Evaluate prediction accuracy
+        run: |
+          python -c "
+          import sqlite3
+          import json
+          import joblib
+          import numpy as np
+          from sklearn.metrics import mean_absolute_error, r2_score
+          
+          # Load model
+          model = joblib.load('models/intervention_predictor.joblib')
+          
+          # Load metadata
+          with open('models/intervention_predictor_metadata.json', 'r') as f:
+              metadata = json.load(f)
+          
+          print(f'Model trained at: {metadata[\"trained_at\"]}')
+          print(f'Training samples: {metadata[\"training_samples\"]}')
+          print(f'Previous MAE: {metadata[\"mae\"]:.2f}')
+          print(f'Previous R²: {metadata[\"r2\"]:.2f}')
+          
+          # Evaluate on recent data
+          db_path = 'outcome_ledger.db'
+          conn = sqlite3.connect(db_path)
+          conn.row_factory = sqlite3.Row
+          cursor = conn.cursor()
+          
+          cursor.execute('''
+              SELECT 
+                  asset_id,
+                  intervention_type,
+                  predicted_value,
+                  planned_effort_days,
+                  outcome_metrics,
+                  before_state
+              FROM interventions
+              WHERE verification_status = \"verified\"
+              AND outcome_metrics IS NOT NULL
+              ORDER BY created_at DESC
+              LIMIT 50
+          ''')
+          
+          rows = cursor.fetchall()
+          
+          features = []
+          targets = []
+          
+          for row in rows:
+              try:
+                  outcome_metrics = json.loads(row['outcome_metrics'])
+                  before_state = json.loads(row['before_state']) if row['before_state'] else {}
+                  
+                  feature = [
+                      row['predicted_value'],
+                      row['planned_effort_days'],
+                      before_state.get('stars', 0),
+                      before_state.get('forks', 0),
+                      before_state.get('contributors', 0),
+                      len(before_state.get('dependencies', [])),
+                  ]
+                  
+                  target = outcome_metrics.get('actual_value', row['predicted_value'])
+                  
+                  features.append(feature)
+                  targets.append(target)
+              except:
+                  continue
+          
+          if features:
+              X = np.array(features)
+              y = np.array(targets)
+              
+              y_pred = model.predict(X)
+              mae = mean_absolute_error(y, y_pred)
+              r2 = r2_score(y, y_pred)
+              
+              print(f'Evaluation MAE: {mae:.2f}')
+              print(f'Evaluation R²: {r2:.2f}')
+              
+              # Check if model degraded
+              if mae > metadata['mae'] * 1.2:
+                  print('WARNING: Model performance degraded significantly')
+                  exit(1)
+          else:
+              print('No recent data for evaluation')
+          
+          conn.close()
+          "
+      
+      - name: Report metrics
+        run: |
+          echo "Model evaluation complete"
+          echo "Metrics would be sent to monitoring system"
+
+  notify-deployment:
+    needs: [check-data-threshold, retrain-model, evaluate-prediction-accuracy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          if [ '${{ needs.check-data-threshold.outputs.should_retrain }}' == 'true' ]; then
+            echo "Model retraining completed"
+            echo "New records: ${{ needs.check-data-threshold.outputs.new_records }}"
+          else
+            echo "Model retraining skipped (threshold not met)"
+          fi
