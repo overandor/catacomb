@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repo Detail — Catacomb</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .repo-container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+        .repo-header { margin-bottom: 32px; }
+        .repo-name { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .repo-id { color: var(--warm-stone); font-family: var(--font-mono); font-size: 13px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px; }
+        .kpi-card { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.1); border-radius: 8px; padding: 20px; text-align: center; }
+        .kpi-value { font-size: 28px; font-weight: 700; font-family: var(--font-mono); color: var(--molten-gold); }
+        .kpi-label { font-size: 11px; color: var(--warm-stone); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+        .section { margin-bottom: 32px; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #fff; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .data-table th { text-align: left; padding: 10px; color: var(--warm-stone); border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 500; }
+        .data-table td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--light-stone); }
+        .data-table tr:hover td { background: rgba(255,107,53,0.05); }
+        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .status-verified { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .status-pending { background: rgba(255,179,71,0.15); color: var(--amber-glow); }
+        .status-completed { background: rgba(255,215,0,0.15); color: var(--molten-gold); }
+        .loading { text-align: center; padding: 60px; color: var(--warm-stone); }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/">Home</a>
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/search">Search</a>
+            <a href="/dashboard">Dashboard</a>
+        </nav>
+    </div>
+
+    <div class="repo-container">
+        <div class="repo-header">
+            <div class="repo-name" id="repoName">Loading...</div>
+            <div class="repo-id" id="repoId"></div>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid">
+            <div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Interventions</div></div>
+            <div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Avg Predicted</div></div>
+            <div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Avg Actual</div></div>
+            <div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Verified</div></div>
+            <div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Success Rate</div></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Intervention History</div>
+            <div id="interventionsTable">
+                <div class="loading">Loading interventions...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const repoId = '{{ repo_id }}';
+        document.getElementById('repoId').textContent = repoId;
+        document.getElementById('repoName').textContent = repoId.split(':').pop() || repoId;
+
+        async function loadRepoData() {
+            try {
+                const resp = await fetch(`/api/v1/repo/${encodeURIComponent(repoId)}`);
+                const data = await resp.json();
+                renderKPIs(data.kpis);
+                renderInterventions(data.interventions);
+            } catch (e) {
+                document.getElementById('interventionsTable').innerHTML = '<div class="loading">Error loading data</div>';
+            }
+        }
+
+        function renderKPIs(kpis) {
+            const grid = document.getElementById('kpiGrid');
+            grid.innerHTML = `
+                <div class="kpi-card"><div class="kpi-value">${kpis.total_interventions}</div><div class="kpi-label">Interventions</div></div>
+                <div class="kpi-card"><div class="kpi-value">${kpis.avg_predicted_value}</div><div class="kpi-label">Avg Predicted</div></div>
+                <div class="kpi-card"><div class="kpi-value">${kpis.avg_actual_value}</div><div class="kpi-label">Avg Actual</div></div>
+                <div class="kpi-card"><div class="kpi-value">${kpis.verified_count}</div><div class="kpi-label">Verified</div></div>
+                <div class="kpi-card"><div class="kpi-value">${kpis.success_rate}%</div><div class="kpi-label">Success Rate</div></div>
+            `;
+        }
+
+        function renderInterventions(interventions) {
+            const container = document.getElementById('interventionsTable');
+            if (!interventions || interventions.length === 0) {
+                container.innerHTML = '<div class="loading">No interventions found</div>';
+                return;
+            }
+
+            let html = `<table class="data-table">
+                <thead><tr>
+                    <th>ID</th><th>Type</th><th>Description</th><th>Status</th><th>Predicted</th><th>Actual</th><th>Date</th>
+                </tr></thead><tbody>`;
+
+            interventions.forEach(intv => {
+                const statusClass = intv.status === 'verified' ? 'status-verified' : 
+                                   intv.status === 'pending' ? 'status-pending' : 'status-completed';
+                const actual = intv.outcome_metrics && intv.outcome_metrics.actual_value ? intv.outcome_metrics.actual_value : '-';
+                html += `<tr>
+                    <td>${intv.id || 'N/A'}</td>
+                    <td>${intv.intervention_type}</td>
+                    <td>${intv.intervention_description || 'N/A'}</td>
+                    <td><span class="status-badge ${statusClass}">${intv.status}</span></td>
+                    <td>${intv.predicted_value || '-'}</td>
+                    <td>${actual}</td>
+                    <td>${intv.created_at ? intv.created_at.split('T')[0] : '-'}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        loadRepoData();
+    </script>
+</body>
+</html>

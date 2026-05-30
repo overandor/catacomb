@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Mining — Catacomb</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .mining-container { max-width: 1000px; margin: 0 auto; padding: 32px; }
+        .mining-controls { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.15); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .control-row { display: flex; gap: 16px; margin-bottom: 16px; align-items: center; }
+        .control-row:last-child { margin-bottom: 0; }
+        .control-label { width: 120px; color: var(--warm-stone); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .control-input { flex: 1; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-family: var(--font-mono); font-size: 13px; }
+        .control-input:focus { outline: none; border-color: var(--forged-orange); }
+        .mine-btn { padding: 12px 32px; background: var(--gold-gradient); border: none; border-radius: 8px; color: #0a0a0f; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s; }
+        .mine-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255,107,53,0.4); }
+        .mine-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .progress-section { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.15); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .progress-title { font-size: 16px; font-weight: 600; color: #fff; }
+        .progress-status { font-size: 12px; color: var(--warm-stone); font-family: var(--font-mono); }
+        .progress-bar-bg { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+        .progress-bar-fill { height: 100%; background: var(--gold-gradient); border-radius: 4px; transition: width 0.5s ease; width: 0%; }
+        .progress-stats { display: flex; gap: 24px; font-size: 12px; color: var(--warm-stone); }
+        .log-terminal { background: #0d0d14; border: 1px solid rgba(255,215,0,0.15); border-radius: 12px; padding: 16px; font-family: var(--font-mono); font-size: 12px; height: 300px; overflow-y: auto; }
+        .log-line { padding: 3px 0; color: var(--light-stone); }
+        .log-line .timestamp { color: var(--warm-stone); margin-right: 8px; }
+        .log-line .success { color: #4ade80; }
+        .log-line .error { color: var(--crimson-risk); }
+        .log-line .info { color: var(--amber-glow); }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .result-card { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.1); border-radius: 8px; padding: 16px; }
+        .result-card-title { font-weight: 600; color: #fff; margin-bottom: 4px; }
+        .result-card-meta { font-size: 12px; color: var(--warm-stone); }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/">Home</a>
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/mine/live" class="active">Live</a>
+            <a href="/search">Search</a>
+            <a href="/dashboard">Dashboard</a>
+        </nav>
+    </div>
+
+    <div class="mining-container">
+        <div class="hero" style="padding: 40px 0;">
+            <h1 class="hero-title">Live Mining</h1>
+            <p class="hero-subtitle">Real-time extraction of interventions from GitHub repositories.</p>
+        </div>
+
+        <div class="mining-controls">
+            <div class="control-row">
+                <div class="control-label">Owner</div>
+                <input type="text" class="control-input" id="ownerInput" value="microsoft" placeholder="e.g., microsoft">
+            </div>
+            <div class="control-row">
+                <div class="control-label">Repository</div>
+                <input type="text" class="control-input" id="repoInput" value="vscode" placeholder="e.g., vscode">
+            </div>
+            <div class="control-row">
+                <div class="control-label">GitHub Token</div>
+                <input type="password" class="control-input" id="tokenInput" placeholder="Optional: GitHub personal access token">
+            </div>
+            <div class="control-row">
+                <div class="control-label"></div>
+                <button class="mine-btn" id="mineBtn" onclick="startMining()">Start Mining</button>
+            </div>
+        </div>
+
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="progress-header">
+                <span class="progress-title">Mining Progress</span>
+                <span class="progress-status" id="progressStatus">Waiting...</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-stats">
+                <span id="progressPercent">0%</span>
+                <span id="progressExtracted">Extracted: 0</span>
+                <span id="progressElapsed">Elapsed: 0s</span>
+            </div>
+        </div>
+
+        <div class="log-terminal" id="logTerminal">
+            <div class="log-line"><span class="timestamp">[--:--:--]</span> Ready to start mining. Enter owner/repo and click Start.</div>
+        </div>
+
+        <div class="section" id="resultsSection" style="display: none; margin-top: 24px;">
+            <div class="section-title">Extracted Interventions</div>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        let miningInterval = null;
+        let startTime = null;
+
+        function log(message, type = 'info') {
+            const terminal = document.getElementById('logTerminal');
+            const now = new Date().toTimeString().split(' ')[0];
+            const typeClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            terminal.innerHTML += `<div class="log-line"><span class="timestamp">[${now}]</span> <span class="${typeClass}">${message}</span></div>`;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        async function startMining() {
+            const btn = document.getElementById('mineBtn');
+            const owner = document.getElementById('ownerInput').value;
+            const repo = document.getElementById('repoInput').value;
+            const token = document.getElementById('tokenInput').value;
+
+            if (!owner || !repo) {
+                log('Error: Owner and repo are required', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            document.getElementById('progressSection').style.display = 'block';
+            startTime = Date.now();
+            log(`Starting mining of ${owner}/${repo}...`, 'info');
+
+            try {
+                const resp = await fetch('/api/v1/mine/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner, repo, github_token: token })
+                });
+                const data = await resp.json();
+                log(data.message, 'info');
+
+                // Start polling
+                miningInterval = setInterval(pollStatus, 1000);
+            } catch (e) {
+                log(`Error: ${e.message}`, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                const resp = await fetch('/api/v1/mine/status');
+                const status = await resp.json();
+
+                const progress = status.progress || 0;
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressPercent').textContent = progress + '%';
+                document.getElementById('progressStatus').textContent = status.message || 'Processing...';
+
+                const extracted = status.results ? status.results.length : 0;
+                document.getElementById('progressExtracted').textContent = `Extracted: ${extracted}`;
+
+                const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+                document.getElementById('progressElapsed').textContent = `Elapsed: ${elapsed}s`;
+
+                if (status.message && status.message !== document.getElementById('progressStatus').textContent) {
+                    log(status.message, 'info');
+                }
+
+                if (!status.in_progress && progress >= 100) {
+                    clearInterval(miningInterval);
+                    document.getElementById('mineBtn').disabled = false;
+                    log('Mining complete!', 'success');
+                    renderResults(status.results || []);
+                }
+            } catch (e) {
+                log(`Status poll error: ${e.message}`, 'error');
+            }
+        }
+
+        function renderResults(results) {
+            const section = document.getElementById('resultsSection');
+            const grid = document.getElementById('resultsGrid');
+            
+            if (!results || results.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            grid.innerHTML = results.map(r => `
+                <div class="result-card">
+                    <div class="result-card-title">${r.asset}</div>
+                    <div class="result-card-meta">${r.type} &middot; Predicted: ${r.value}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

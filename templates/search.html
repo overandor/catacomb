@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb Search</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .search-container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+        .search-bar { display: flex; gap: 12px; margin-bottom: 32px; }
+        .search-input { flex: 1; padding: 12px 16px; background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px; color: #fff; font-family: var(--font-mono); font-size: 14px; }
+        .search-input:focus { outline: none; border-color: var(--forged-orange); box-shadow: 0 0 15px rgba(255,107,53,0.2); }
+        .search-btn { padding: 12px 24px; background: var(--gold-gradient); border: none; border-radius: 8px; color: #0a0a0f; font-weight: 600; cursor: pointer; }
+        .search-filters { display: flex; gap: 8px; margin-bottom: 24px; }
+        .filter-chip { padding: 6px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; color: var(--warm-stone); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .filter-chip:hover, .filter-chip.active { background: rgba(255,107,53,0.15); border-color: var(--forged-orange); color: var(--forged-orange); }
+        .results-section { margin-bottom: 32px; }
+        .results-header { font-size: 14px; color: var(--warm-stone); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .result-card { background: var(--volcanic-graphite); border: 1px solid rgba(255,215,0,0.1); border-radius: 8px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; cursor: pointer; }
+        .result-card:hover { border-color: rgba(255,215,0,0.3); transform: translateX(4px); }
+        .result-title { color: #fff; font-weight: 600; margin-bottom: 4px; }
+        .result-meta { color: var(--warm-stone); font-size: 12px; }
+        .result-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-left: 8px; }
+        .badge-verified { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .badge-pending { background: rgba(255,179,71,0.15); color: var(--amber-glow); }
+        .loading { text-align: center; padding: 40px; color: var(--warm-stone); }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/">Home</a>
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/search" class="active">Search</a>
+        </nav>
+    </div>
+
+    <div class="search-container">
+        <div class="hero" style="padding: 40px 0;">
+            <h1 class="hero-title">Universal Search</h1>
+            <p class="hero-subtitle">Search across all assets, interventions, and repositories.</p>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search repos, interventions, assets..." autocomplete="off">
+            <button class="search-btn" onclick="performSearch()">Search</button>
+        </div>
+
+        <div class="search-filters">
+            <div class="filter-chip active" data-filter="all">All</div>
+            <div class="filter-chip" data-filter="assets">Assets</div>
+            <div class="filter-chip" data-filter="interventions">Interventions</div>
+        </div>
+
+        <div id="resultsContainer"></div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = chip.dataset.filter;
+                performSearch();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            const container = document.getElementById('resultsContainer');
+            
+            if (!query) { container.innerHTML = ''; return; }
+            
+            container.innerHTML = '<div class="loading">Searching...</div>';
+            
+            try {
+                const resp = await fetch(`/api/v1/search?q=${encodeURIComponent(query)}&category=${currentFilter}`);
+                const data = await resp.json();
+                renderResults(data);
+            } catch (e) {
+                container.innerHTML = '<div class="loading">Error loading results</div>';
+            }
+        }
+
+        function renderResults(data) {
+            const container = document.getElementById('resultsContainer');
+            let html = '';
+            
+            if (data.results.assets && data.results.assets.length > 0) {
+                html += '<div class="results-section"><div class="results-header">Assets (' + data.results.assets.length + ')</div>';
+                data.results.assets.forEach(asset => {
+                    html += `<div class="result-card" onclick="window.location='/repo/${encodeURIComponent(asset.id)}'">
+                        <div class="result-title">${asset.name} <span class="result-badge badge-verified">${asset.type}</span></div>
+                        <div class="result-meta">${asset.id} &middot; ${asset.interventions} interventions</div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            if (data.results.interventions && data.results.interventions.length > 0) {
+                html += '<div class="results-section"><div class="results-header">Interventions (' + data.results.interventions.length + ')</div>';
+                data.results.interventions.forEach(intv => {
+                    const badgeClass = intv.status === 'verified' ? 'badge-verified' : 'badge-pending';
+                    html += `<div class="result-card">
+                        <div class="result-title">${intv.asset} <span class="result-badge ${badgeClass}">${intv.status}</span></div>
+                        <div class="result-meta">${intv.type} &middot; ${intv.id} &middot; Predicted: ${intv.predicted_value || 'N/A'}</div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            if (!html) html = '<div class="loading">No results found</div>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -14,6 +14,7 @@ from catacomb_radar import CatacombRadar, RadarSignal
 from universe_classifier import UniverseClassifier, AssetMetrics, Universe
 from prediction_accuracy import PredictionAccuracyTracker
 from package_ecosystem_miner import PackageEcosystemMiner, seed_package_interventions
+from proof_of_inference import ProofOfInference, OllamaInferenceClient, get_proof_sdk
 from datetime import datetime
 import json
 import threading
@@ -746,6 +747,325 @@ def api_sdk_insights():
         "top_developers": top_developers,
         "timestamp": datetime.utcnow().isoformat()
     })
+
+# ===== PROOF OF INFERENCE ENDPOINTS =====
+
+@app.route('/api/v1/inference/proof', methods=['POST'])
+def generate_inference_proof():
+    """Generate a verifiable proof of LLM inference."""
+    data = request.get_json()
+    
+    if not data or 'model' not in data or 'prompt' not in data or 'response' not in data:
+        return jsonify({"error": "Required: model, prompt, response"}), 400
+    
+    poi = get_proof_sdk()
+    proof = poi.generate_proof(
+        model=data['model'],
+        prompt=data['prompt'],
+        response=data['response'],
+        metadata=data.get('metadata', {}),
+        latency_ms=data.get('latency_ms')
+    )
+    
+    # Optionally store in ledger
+    if data.get('store_in_ledger'):
+        record_id = poi.store_proof(proof, ledger)
+        proof['stored_record_id'] = record_id
+    
+    return jsonify(proof)
+
+@app.route('/api/v1/proof/<proof_id>/verify', methods=['GET', 'POST'])
+def verify_proof_endpoint(proof_id):
+    """Verify a proof of inference by ID or provided proof data."""
+    poi = get_proof_sdk()
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        if not data or 'proof' not in data:
+            return jsonify({"error": "Provide proof in request body"}), 400
+        proof = data['proof']
+    else:
+        # Try to fetch from ledger
+        proof = poi.get_proof_by_id(proof_id, ledger)
+        if not proof:
+            return jsonify({"error": "Proof not found"}), 404
+    
+    result = poi.verify_proof(proof)
+    return jsonify(result)
+
+@app.route('/api/v1/inference/ollama', methods=['POST'])
+def ollama_inference_endpoint():
+    """Serverless endpoint for Ollama inference with proof generation."""
+    data = request.get_json()
+    
+    if not data or 'model' not in data or 'prompt' not in data:
+        return jsonify({"error": "Required: model, prompt"}), 400
+    
+    model = data['model']
+    prompt = data['prompt']
+    options = data.get('options', {})
+    store_proof_flag = data.get('store_proof', False)
+    
+    try:
+        client = OllamaInferenceClient()
+        result = client.generate_verified(
+            model=model,
+            prompt=prompt,
+            options=options,
+            ledger=ledger if store_proof_flag else None
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e), "message": "Ollama may not be running"}), 503
+
+# ===== SEARCH =====
+
+@app.route('/search')
+def search_page():
+    """Search interface for repos and interventions."""
+    return render_template('search.html')
+
+@app.route('/api/v1/search')
+def api_search():
+    """Universal search across all data."""
+    query = request.args.get('q', '').lower()
+    category = request.args.get('category', 'all')  # all, repos, interventions, assets
+    
+    import sqlite3
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    results = {"repos": [], "interventions": [], "assets": []}
+    
+    if category in ('all', 'repos', 'assets'):
+        cursor.execute("""
+            SELECT DISTINCT asset_id, asset_name, asset_type, 
+                   COUNT(*) as intervention_count
+            FROM interventions 
+            WHERE asset_name LIKE ? OR asset_id LIKE ?
+            GROUP BY asset_id
+            LIMIT 20
+        """, (f'%{query}%', f'%{query}%'))
+        for row in cursor.fetchall():
+            results['assets'].append({
+                "id": row[0],
+                "name": row[1],
+                "type": row[2],
+                "interventions": row[3]
+            })
+    
+    if category in ('all', 'interventions'):
+        cursor.execute("""
+            SELECT id, asset_name, intervention_type, status, 
+                   created_at, predicted_value
+            FROM interventions 
+            WHERE asset_name LIKE ? OR intervention_type LIKE ? OR id LIKE ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, (f'%{query}%', f'%{query}%', f'%{query}%'))
+        for row in cursor.fetchall():
+            results['interventions'].append({
+                "id": row[0],
+                "asset": row[1],
+                "type": row[2],
+                "status": row[3],
+                "created": row[4],
+                "predicted_value": row[5]
+            })
+    
+    conn.close()
+    
+    total = len(results['assets']) + len(results['interventions'])
+    return jsonify({
+        "query": query,
+        "category": category,
+        "total_results": total,
+        "results": results
+    })
+
+# ===== REPO INGESTION & KPIs =====
+
+@app.route('/repo/<path:repo_id>')
+def repo_detail_page(repo_id):
+    """Full repo detail page with KPIs."""
+    return render_template('repo.html', repo_id=repo_id)
+
+@app.route('/api/v1/repo/<path:repo_id>')
+def api_repo_detail(repo_id):
+    """Get full repo data with KPIs."""
+    import sqlite3
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    # Get all interventions for this repo
+    cursor.execute("""
+        SELECT * FROM interventions WHERE asset_id = ? ORDER BY created_at DESC
+    """, (repo_id,))
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    
+    interventions = []
+    for row in rows:
+        record = dict(zip(columns, row))
+        for json_field in ['before_state', 'predicted_outcome', 'after_state', 'outcome_metrics']:
+            if record.get(json_field):
+                try:
+                    record[json_field] = json.loads(record[json_field])
+                except:
+                    pass
+        interventions.append(record)
+    
+    # Calculate KPIs
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total,
+            AVG(CAST(json_extract(predicted_outcome, '$.value') AS FLOAT)) as avg_predicted,
+            AVG(CAST(json_extract(outcome_metrics, '$.actual_value') AS FLOAT)) as avg_actual,
+            COUNT(CASE WHEN verification_status = 'verified' THEN 1 END) as verified_count
+        FROM interventions WHERE asset_id = ?
+    """, (repo_id,))
+    
+    kpi_row = cursor.fetchone()
+    kpis = {
+        "total_interventions": kpi_row[0] or 0,
+        "avg_predicted_value": round(kpi_row[1] or 0, 2),
+        "avg_actual_value": round(kpi_row[2] or 0, 2),
+        "verified_count": kpi_row[3] or 0,
+        "success_rate": round((kpi_row[3] / kpi_row[0] * 100) if kpi_row[0] else 0, 1)
+    }
+    
+    conn.close()
+    
+    return jsonify({
+        "repo_id": repo_id,
+        "kpis": kpis,
+        "interventions": interventions,
+        "intervention_count": len(interventions)
+    })
+
+@app.route('/api/v1/repo/ingest', methods=['POST'])
+def api_repo_ingest():
+    """Ingest a new GitHub repo and extract KPIs."""
+    data = request.get_json()
+    
+    if not data or 'owner' not in data or 'repo' not in data:
+        return jsonify({"error": "Required: owner, repo"}), 400
+    
+    owner = data['owner']
+    repo = data['repo']
+    github_token = data.get('github_token') or os.environ.get('GITHUB_TOKEN')
+    
+    try:
+        miner = GitHubInterventionMiner(github_token)
+        metrics = miner.fetch_repo_metrics(owner, repo)
+        
+        # Store as asset record
+        asset_record = {
+            "asset_id": f"github:{owner}/{repo}",
+            "asset_type": "github_repo",
+            "asset_name": repo,
+            "developer_id": f"github:{owner}",
+            "intervention_type": "asset_discovery",
+            "intervention_description": f"Ingested repo {owner}/{repo}",
+            "before_state": metrics,
+            "predicted_value": 0,
+            "predicted_probability": 0.5,
+            "start_date": datetime.utcnow().isoformat(),
+            "end_date": datetime.utcnow().isoformat(),
+            "after_state": metrics,
+            "outcome_metrics": {"status": "ingested"},
+            "verification_link": f"https://github.com/{owner}/{repo}"
+        }
+        
+        record_id = ledger.record_intervention(**asset_record)
+        
+        return jsonify({
+            "status": "ingested",
+            "repo": f"{owner}/{repo}",
+            "record_id": record_id,
+            "metrics": metrics
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ===== LIVE MINING =====
+
+@app.route('/mine/live')
+def mine_live_page():
+    """Live mining interface with real-time progress."""
+    return render_template('mine_live.html')
+
+@app.route('/api/v1/mine/status')
+def api_mine_status():
+    """Get current mining status."""
+    return jsonify(mining_status)
+
+@app.route('/api/v1/mine/start', methods=['POST'])
+def api_mine_start():
+    """Start mining with live progress tracking."""
+    global mining_status
+    
+    if mining_status["in_progress"]:
+        return jsonify({"error": "Mining already in progress"}), 400
+    
+    data = request.get_json() or request.form
+    owner = data.get('owner', 'microsoft')
+    repo = data.get('repo', 'vscode')
+    github_token = data.get('github_token') or os.environ.get('GITHUB_TOKEN')
+    
+    mining_status["in_progress"] = True
+    mining_status["progress"] = 0
+    mining_status["total"] = 100
+    mining_status["message"] = f"Starting mining of {owner}/{repo}..."
+    mining_status["results"] = []
+    
+    def mine_thread():
+        try:
+            miner = GitHubInterventionMiner(github_token)
+            
+            # Fetch repo metrics
+            mining_status["message"] = "Fetching repo metrics..."
+            mining_status["progress"] = 10
+            metrics = miner.fetch_repo_metrics(owner, repo)
+            
+            # Fetch PRs
+            mining_status["message"] = "Fetching merged PRs..."
+            mining_status["progress"] = 25
+            prs = miner.fetch_merged_prs(owner, repo, limit=50)
+            
+            # Extract interventions
+            mining_status["message"] = f"Extracting interventions from {len(prs)} PRs..."
+            mining_status["progress"] = 40
+            
+            extracted = 0
+            for i, pr in enumerate(prs):
+                intervention = miner.extract_intervention_from_pr(owner, repo, pr)
+                if intervention:
+                    ledger.record_intervention(**intervention)
+                    mining_status["results"].append({
+                        "asset": intervention["asset_name"],
+                        "type": intervention["intervention_type"],
+                        "value": intervention["predicted_value"]
+                    })
+                    extracted += 1
+                
+                mining_status["progress"] = 40 + int((i / len(prs)) * 50)
+                mining_status["message"] = f"Extracted {extracted} interventions..."
+            
+            mining_status["progress"] = 100
+            mining_status["message"] = f"Complete! Extracted {extracted} interventions from {owner}/{repo}"
+            mining_status["in_progress"] = False
+            
+        except Exception as e:
+            mining_status["message"] = f"Error: {str(e)}"
+            mining_status["in_progress"] = False
+    
+    thread = threading.Thread(target=mine_thread)
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({"status": "started", "message": mining_status["message"]})
 
 # Vercel serverless handler
 def handler(event, context):
