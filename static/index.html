@@ -17,10 +17,10 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
-        // Backend API URL - configure for hybrid deployment
+        // Backend API URL - same origin for Vercel deployment
         const API_BASE_URL = window.API_BASE_URL || 
                            (window.location.hostname === 'localhost' ? 'http://localhost:5001' : 
-                            window.location.origin.replace('://', '://api-'));
+                            window.location.origin);
 
         // Header Component
         function Header({ currentView, setCurrentView, userTier }) {

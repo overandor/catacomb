@@ -2,28 +2,42 @@
   "version": 2,
   "builds": [
     {
+      "src": "app.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "static/**",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/app.py"
+    },
+    {
+      "src": "/auth/(.*)",
+      "dest": "/app.py"
+    },
+    {
+      "src": "/login",
+      "dest": "/app.py"
+    },
+    {
+      "src": "/profile",
+      "dest": "/app.py"
+    },
+    {
       "src": "/static/(.*)",
       "dest": "/static/$1"
     },
     {
-      "src": "/index.html",
-      "dest": "/static/index.html"
+      "src": "/app.css",
+      "dest": "/static/app.css"
     },
     {
       "src": "/(.*)",
       "dest": "/static/index.html"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/static/index.html"
     }
   ]
 }
