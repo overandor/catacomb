@@ -179,6 +179,11 @@ def catacomb_radar():
     summary = radar.get_radar_summary()
     return render_template('radar.html', signals=top_signals, summary=summary)
 
+@app.route('/alpha')
+def alpha_page():
+    """Innovation Alpha - Undervalued software assets."""
+    return render_template('alpha.html')
+
 @app.route('/api/radar/summary')
 def radar_summary_api():
     """Get radar summary statistics."""
