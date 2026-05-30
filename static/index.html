@@ -15,7 +15,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useRef } = React;
 
         // Backend API URL - same origin for Vercel deployment
         const API_BASE_URL = window.API_BASE_URL || 
@@ -28,6 +28,7 @@
                 { id: 'radar', label: 'Radar' },
                 { id: 'alpha', label: 'Alpha' },
                 { id: 'search', label: 'Search' },
+                { id: 'swipe', label: 'Swipe' },
             ];
             
             const underwriterItems = [
@@ -331,6 +332,24 @@
                 <div className="bg-graphite/50 rounded-lg p-3 border border-orange/5">
                     <p className="text-stone text-xs mb-1">{label}</p>
                     <p className="text-warm-white font-semibold font-mono">{value || 'N/A'}</p>
+                </div>
+            );
+        }
+
+        function TerminalLog({ lines }) {
+            const logEndRef = useRef(null);
+            useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [lines]);
+            const typeColors = { ok: 'text-green-400', warn: 'text-orange', error: 'text-crimson', info: 'text-blue-400' };
+            return (
+                <div className="bg-graphite/30 border border-orange/10 rounded-lg p-4 font-mono text-xs overflow-y-auto max-h-[60vh]">
+                    {lines.length === 0 && <p className="text-stone italic">No events recorded</p>}
+                    {lines.map((line, i) => (
+                        <div key={i} className="flex gap-3 py-1 border-b border-orange/5 last:border-0">
+                            <span className="text-stone flex-shrink-0 w-16">{line.time}</span>
+                            <span className={typeColors[line.type] || 'text-stone'}>{line.msg}</span>
+                        </div>
+                    ))}
+                    <div ref={logEndRef} />
                 </div>
             );
         }
@@ -862,32 +881,60 @@
         function SwipeView() {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [saved, setSaved] = useState([]);
+            const [ignored, setIgnored] = useState([]);
             const [repos, setRepos] = useState([]);
+            const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
+            const [swipeAnim, setSwipeAnim] = useState(null);
 
             async function loadSwipe() {
-                setError(null);
+                setLoading(true); setError(null);
                 try {
                     const res = await fetch(`${API_BASE_URL}/api/discover/promising`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
                     setRepos(Array.isArray(data.results) ? data.results : []);
+                    setCurrentIndex(0); setSaved([]); setIgnored([]);
                 } catch (err) {
                     console.error('Swipe load failed:', err);
-                    setError(err.message);
-                    setRepos([]);
-                }
+                    setError(err.message); setRepos([]);
+                } finally { setLoading(false); }
             }
 
             useEffect(() => { loadSwipe(); }, []);
 
-            const handleSwipe = (direction) => {
-                if (direction === 'right' && repos[currentIndex]) {
-                    setSaved([...saved, repos[currentIndex]]);
+            useEffect(() => {
+                function onKey(e) {
+                    if (currentIndex >= repos.length) return;
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); doSwipe('left'); }
+                    else if (e.key === 'ArrowRight') { e.preventDefault(); doSwipe('right'); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); doSwipe('up'); }
+                    else if (e.key === 'ArrowDown') { e.preventDefault(); if (currentIndex > 0) setCurrentIndex(currentIndex - 1); }
                 }
-                setCurrentIndex(Math.min(currentIndex + 1, repos.length - 1));
-            };
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, [currentIndex, repos.length]);
+
+            function doSwipe(direction) {
+                if (currentIndex >= repos.length || !repos[currentIndex]) return;
+                setSwipeAnim(direction);
+                setTimeout(() => {
+                    if (direction === 'right' && repos[currentIndex]) setSaved([...saved, repos[currentIndex]]);
+                    if (direction === 'left' && repos[currentIndex]) setIgnored([...ignored, repos[currentIndex]]);
+                    setCurrentIndex(currentIndex + 1);
+                    setSwipeAnim(null);
+                }, 250);
+            }
+
+            if (loading) {
+                return (
+                    <div className="max-w-7xl mx-auto px-6 py-8">
+                        <h2 className="text-3xl font-bold mb-6 text-orange">Swipe Discovery</h2>
+                        <LoadingSkeleton count={1} height={400} />
+                    </div>
+                );
+            }
 
             if (repos.length === 0) {
                 return (
@@ -900,7 +947,7 @@
                                     <button onClick={loadSwipe} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Retry</button>
                                 </>
                             ) : (
-                                <p className="text-stone">Loading assets...</p>
+                                <p className="text-stone">No assets available for discovery.</p>
                             )}
                         </div>
                     </div>
@@ -911,76 +958,110 @@
                 return (
                     <div className="max-w-7xl mx-auto px-6 py-8">
                         <h2 className="text-3xl font-bold mb-6 text-orange">Swipe Discovery</h2>
-                        <div className="card-premium p-12 text-center">
-                            <p className="text-stone text-lg mb-4">All assets reviewed</p>
-                            <p className="text-gold">{saved.length} opportunities saved</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="card-premium p-6 text-center">
+                                <p className="metric-value text-3xl text-gold">{saved.length}</p>
+                                <p className="text-stone text-sm">Saved Opportunities</p>
+                            </div>
+                            <div className="card-premium p-6 text-center">
+                                <p className="metric-value text-3xl text-crimson">{ignored.length}</p>
+                                <p className="text-stone text-sm">Ignored</p>
+                            </div>
+                            <div className="card-premium p-6 text-center">
+                                <p className="metric-value text-3xl text-warm-white">{repos.length}</p>
+                                <p className="text-stone text-sm">Total Reviewed</p>
+                            </div>
                         </div>
+                        {saved.length > 0 && (
+                            <div className="card-premium p-6">
+                                <h3 className="text-lg font-semibold mb-4 text-orange">Saved Opportunities</h3>
+                                <div className="space-y-2">
+                                    {saved.map((r, i) => (
+                                        <div key={i} className="flex justify-between items-center p-3 bg-graphite/30 rounded">
+                                            <span className="font-mono text-sm">{r.repo}</span>
+                                            <span className="text-gold font-mono">${r.value_per_day?.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <button onClick={loadSwipe} className="mt-6 px-6 py-3 bg-orange/20 border border-orange/30 text-orange rounded-lg hover:bg-orange/30 transition-all">Start New Session</button>
                     </div>
                 );
             }
 
-            const currentRepo = repos[currentIndex];
+            const r = repos[currentIndex];
+            const animClass = swipeAnim === 'left' ? 'translate-x-[-120%] opacity-0' : swipeAnim === 'right' ? 'translate-x-[120%] opacity-0' : swipeAnim === 'up' ? 'translate-y-[-120%] opacity-0' : '';
 
             return (
-                <div className="max-w-4xl mx-auto px-6 py-8">
-                    <h2 className="text-3xl font-bold mb-2 text-orange">Swipe Discovery</h2>
-                    <p className="text-stone mb-6">Premium asset discovery • {currentIndex + 1} of {repos.length}</p>
-
-                    <div className="card-premium p-8 mb-6">
-                        <div className="text-center mb-6">
-                            <h3 className="text-2xl font-bold mb-2">{currentRepo.repo}</h3>
-                            <p className="text-stone">{currentRepo.repo_data?.description || 'No description'}</p>
+                <div className="max-w-5xl mx-auto px-6 py-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-3xl font-bold text-orange">Swipe Discovery</h2>
+                            <p className="text-stone">{currentIndex + 1} of {repos.length} • {saved.length} saved • {ignored.length} ignored</p>
                         </div>
-
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="bg-graphite/50 rounded-lg p-4 text-center">
-                                <p className="metric-value text-3xl text-orange glow-orange">
-                                    ${currentRepo.value_per_day?.toFixed(2) || '0.00'}
-                                </p>
-                                <p className="text-stone text-sm mt-1">Value/Day</p>
-                            </div>
-                            <div className="bg-graphite/50 rounded-lg p-4 text-center">
-                                <p className="metric-value text-3xl text-gold">
-                                    {currentRepo.innovation_alpha?.toFixed(2) || '0.00'}
-                                </p>
-                                <p className="text-stone text-sm mt-1">Innovation Alpha</p>
-                            </div>
-                            <div className="bg-graphite/50 rounded-lg p-4 text-center">
-                                <p className="metric-value text-3xl text-warm-white">
-                                    {currentRepo.value_delta?.value_delta_percent?.toFixed(0)}%
-                                </p>
-                                <p className="text-stone text-sm mt-1">Value Delta</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => handleSwipe('left')}
-                                className="flex-1 py-4 bg-crimson/20 border border-crimson/30 text-crimson font-medium rounded-lg hover:bg-crimson/30 transition-all"
-                            >
-                                Ignore
-                            </button>
-                            <button
-                                onClick={() => handleSwipe('up')}
-                                className="flex-1 py-4 bg-graphite/50 border border-orange/20 text-stone font-medium rounded-lg hover:bg-graphite transition-all"
-                            >
-                                Mine Evidence
-                            </button>
-                            <button
-                                onClick={() => handleSwipe('right')}
-                                className="flex-1 py-4 bg-orange/20 border border-orange/30 text-orange font-medium rounded-lg hover:bg-orange/30 transition-all"
-                            >
-                                Save Opportunity
-                            </button>
+                        <div className="flex gap-2">
+                            <button onClick={() => doSwipe('left')} className="px-4 py-2 bg-crimson/20 border border-crimson/30 text-crimson text-sm rounded-lg hover:bg-crimson/30 transition-all">← Ignore</button>
+                            <button onClick={() => doSwipe('up')} className="px-4 py-2 bg-graphite/50 border border-orange/20 text-stone text-sm rounded-lg hover:bg-graphite transition-all">↑ Mine</button>
+                            <button onClick={() => doSwipe('right')} className="px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded-lg hover:bg-orange/30 transition-all">Save →</button>
                         </div>
                     </div>
 
-                    <div className="card-premium p-4">
+                    <div className={`card-premium p-8 transition-all duration-300 ${animClass}`}>
+                        <div className="flex items-start justify-between mb-6">
+                            <div>
+                                <h3 className="text-2xl font-bold">{r.repo}</h3>
+                                <p className="text-stone mt-1">{r.repo_data?.description || 'No description'}</p>
+                                <div className="flex gap-2 mt-2">
+                                    {r.repo_data?.language && <span className="badge badge-undervalued">{r.repo_data.language}</span>}
+                                    {r.repo_data?.topics?.slice(0, 3).map((t, i) => <span key={i} className="badge badge-undervalued">{t}</span>)}
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="metric-value text-3xl text-gold glow-gold">${r.value_per_day?.toFixed(2) || '0.00'}</p>
+                                <p className="text-xs text-stone">value / day</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                            <div className="bg-graphite/40 rounded-lg p-3 text-center">
+                                <p className="metric-value text-xl text-orange">{r.innovation_alpha?.toFixed(2)}</p>
+                                <p className="text-xs text-stone">Innovation Alpha</p>
+                            </div>
+                            <div className="bg-graphite/40 rounded-lg p-3 text-center">
+                                <p className="metric-value text-xl text-warm-white">{r.value_delta?.value_delta_percent?.toFixed(0)}%</p>
+                                <p className="text-xs text-stone">Value Delta</p>
+                            </div>
+                            <div className="bg-graphite/40 rounded-lg p-3 text-center">
+                                <p className="metric-value text-xl text-warm-white">{r.repo_data?.stars?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Stars</p>
+                            </div>
+                            <div className="bg-graphite/40 rounded-lg p-3 text-center">
+                                <p className="metric-value text-xl text-warm-white">{r.repo_data?.forks?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Forks</p>
+                            </div>
+                            <div className="bg-graphite/40 rounded-lg p-3 text-center">
+                                <p className="metric-value text-xl text-warm-white">{r.total_effort_days}</p>
+                                <p className="text-xs text-stone">Effort Days</p>
+                            </div>
+                        </div>
+
+                        {r.best_intervention && (
+                            <div className="bg-graphite/30 rounded-lg p-4 border border-orange/10">
+                                <p className="text-orange text-xs font-medium uppercase tracking-wider mb-1">Best Intervention</p>
+                                <p className="text-warm-white font-semibold">{r.best_intervention.name}</p>
+                                <p className="text-stone text-sm mt-1">Probability: {(r.best_intervention.probability * 100).toFixed(0)}% • Expected Value: ${r.best_intervention.expected_value?.toLocaleString()}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="card-premium p-4 mt-4">
                         <p className="text-stone text-sm mb-2">Keyboard Shortcuts</p>
-                        <div className="flex gap-4 text-xs text-stone">
-                            <span className="font-mono">← Ignore</span>
-                            <span className="font-mono">↑ Mine</span>
-                            <span className="font-mono">→ Save</span>
+                        <div className="flex gap-6 text-xs text-stone font-mono">
+                            <span>← Ignore</span>
+                            <span>→ Save</span>
+                            <span>↑ Mine Evidence</span>
+                            <span>↓ Previous</span>
                         </div>
                     </div>
                 </div>
@@ -1115,10 +1196,12 @@
                 setAutoDiscovery({ active: false, nextSearch: null, currentUser: null });
             }
 
-            function selectSuggestion(username) {
+            async function selectSuggestion(username) {
                 setQuery(username);
                 setShowSuggestions(false);
-                handleSearch({ preventDefault: () => {} });
+                setSearchType('user');
+                await new Promise(r => setTimeout(r, 10));
+                await handleSearch({ preventDefault: () => {} });
             }
 
             return (
@@ -1126,14 +1209,13 @@
                     <h2 className="text-3xl font-bold mb-2 text-orange">Search</h2>
                     <p className="text-stone mb-6">Global search across repositories, developers, packages, and interventions.</p>
 
-                    {/* Recommended Users */}
                     <div className="card-premium p-4 mb-6">
                         <h3 className="text-sm font-medium text-orange mb-3">Recommended Developers</h3>
                         <div className="flex flex-wrap gap-2">
                             {recommendedUsers.map((u, i) => (
                                 <button
                                     key={i}
-                                    onClick={() => { setSearchType('user'); setQuery(u.username); }}
+                                    onClick={() => selectSuggestion(u.username)}
                                     className="px-3 py-2 bg-graphite border border-orange/20 rounded-lg text-xs hover:border-orange/40 transition-all text-left"
                                 >
                                     <div className="font-medium text-warm-white">{u.username}</div>
@@ -1143,7 +1225,6 @@
                         </div>
                     </div>
 
-                    {/* Search Form */}
                     <form onSubmit={handleSearch} className="card-premium p-4 mb-6 relative">
                         <div className="flex flex-wrap gap-3">
                             <select className="bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" value={searchType} onChange={e=>setSearchType(e.target.value)}>
@@ -1152,22 +1233,18 @@
                                 <option value="user">User</option>
                             </select>
                             <div className="flex-1 min-w-[200px] relative">
-                                <input 
-                                    className="w-full bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" 
-                                    value={query} 
-                                    onChange={e=>setQuery(e.target.value)} 
+                                <input
+                                    className="w-full bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm"
+                                    value={query}
+                                    onChange={e=>setQuery(e.target.value)}
                                     onFocus={()=>setShowSuggestions(true)}
                                     onBlur={()=>setTimeout(()=>setShowSuggestions(false), 200)}
-                                    placeholder={searchType==='repo'?'owner/repo':searchType==='topic'?'machine-learning':'github-username'} 
+                                    placeholder={searchType==='repo'?'owner/repo':searchType==='topic'?'machine-learning':'github-username'}
                                 />
                                 {showSuggestions && suggestions.length > 0 && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-graphite border border-orange/20 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                                         {suggestions.map((s, i) => (
-                                            <div
-                                                key={i}
-                                                onClick={() => selectSuggestion(s.username)}
-                                                className="px-4 py-3 hover:bg-orange/10 cursor-pointer border-b border-orange/10 last:border-0"
-                                            >
+                                            <div key={i} onClick={() => selectSuggestion(s.username)} className="px-4 py-3 hover:bg-orange/10 cursor-pointer border-b border-orange/10 last:border-0">
                                                 <div className="font-medium text-warm-white">{s.username}</div>
                                                 <div className="text-stone text-xs">{s.description}</div>
                                             </div>
@@ -1179,7 +1256,6 @@
                         </div>
                     </form>
 
-                    {/* Auto-Discovery Controls */}
                     {searchType === 'user' && query && (
                         <div className="card-premium p-4 mb-6">
                             <div className="flex items-center justify-between">
@@ -1188,19 +1264,11 @@
                                     <p className="text-stone text-xs mt-1">Automatically search for new data every 3 minutes</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    {autoDiscovery.active && (
-                                        <span className="text-xs text-stone">
-                                            Next search: {autoDiscovery.nextSearch?.toLocaleTimeString()}
-                                        </span>
-                                    )}
+                                    {autoDiscovery.active && <span className="text-xs text-stone">Next: {autoDiscovery.nextSearch?.toLocaleTimeString()}</span>}
                                     {autoDiscovery.active ? (
-                                        <button onClick={stopAutoDiscovery} className="px-4 py-2 bg-crimson/20 border border-crimson/30 text-crimson text-sm rounded-lg hover:bg-crimson/30 transition-all">
-                                            Stop Auto-Discovery
-                                        </button>
+                                        <button onClick={stopAutoDiscovery} className="px-4 py-2 bg-crimson/20 border border-crimson/30 text-crimson text-sm rounded-lg hover:bg-crimson/30 transition-all">Stop</button>
                                     ) : (
-                                        <button onClick={() => startAutoDiscovery(query)} className="px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded-lg hover:bg-orange/30 transition-all">
-                                            Start Auto-Discovery
-                                        </button>
+                                        <button onClick={() => startAutoDiscovery(query)} className="px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded-lg hover:bg-orange/30 transition-all">Start</button>
                                     )}
                                 </div>
                             </div>
@@ -1218,24 +1286,41 @@
 
                     {loading && <LoadingSkeleton count={3} height={80} />}
 
+                    {results.length > 0 && <p className="text-stone text-sm mb-3">{results.length} results</p>}
+
                     <div className="space-y-3">
                         {results.map((r,i)=>{
                             const rd = r.repo_data || {};
                             const a = r.analysis || {};
+                            const inter = r.best_intervention || {};
                             return (
-                                <div key={i} className="card-premium p-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="badge badge-undervalued">{r.repo ? 'Repo' : 'Result'}</span>
-                                        <span className="font-medium">{r.repo || 'Unknown'}</span>
-                                    </div>
-                                    <p className="text-stone text-sm">{rd.description || 'No description'}</p>
-                                    {a.intervention_score > 0 && (
-                                        <div className="flex flex-wrap gap-3 text-sm mt-2">
-                                            <span className="text-stone">Score: <span className="font-mono text-warm-white">{a.intervention_score}</span></span>
-                                            <span className="text-stone">Lang: <span className="font-mono text-warm-white">{rd.language || 'N/A'}</span></span>
-                                            <span className="text-stone">Stars: <span className="font-mono text-warm-white">{rd.stars || 0}</span></span>
+                                <div key={i} className="card-premium p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="badge badge-undervalued">{r.repo ? 'Repo' : r.asset_id ? 'Asset' : 'Result'}</span>
+                                                {rd.language && <span className="badge badge-verified">{rd.language}</span>}
+                                                {r.verification_status && <span className={`badge ${r.verification_status==='verified'?'badge-verified':'badge-undervalued'}`}>{r.verification_status}</span>}
+                                            </div>
+                                            <h3 className="font-semibold text-lg">{r.repo || r.asset_id || r.asset_name || 'Unknown'}</h3>
+                                            <p className="text-stone text-sm mt-1">{rd.description || r.intervention_description || 'No description'}</p>
                                         </div>
-                                    )}
+                                        <div className="text-right">
+                                            {r.value_per_day != null && <p className="metric-value text-xl text-gold">${r.value_per_day.toFixed(2)}</p>}
+                                            {r.predicted_value != null && <p className="metric-value text-xl text-gold">${r.predicted_value.toLocaleString()}</p>}
+                                            <p className="text-xs text-stone">{r.value_per_day != null ? 'value/day' : 'predicted'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                        {rd.stars != null && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Stars</span><p className="font-mono text-warm-white">{rd.stars.toLocaleString()}</p></div>}
+                                        {rd.forks != null && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Forks</span><p className="font-mono text-warm-white">{rd.forks.toLocaleString()}</p></div>}
+                                        {a.intervention_score > 0 && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Score</span><p className="font-mono text-warm-white">{a.intervention_score.toFixed(1)}</p></div>}
+                                        {r.innovation_alpha != null && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Alpha</span><p className="font-mono text-orange">{r.innovation_alpha.toFixed(2)}</p></div>}
+                                        {r.planned_effort_days != null && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Effort</span><p className="font-mono text-warm-white">{r.planned_effort_days}d</p></div>}
+                                        {inter.name && <div className="bg-graphite/40 rounded p-2 col-span-2 md:col-span-3"><span className="text-stone">Intervention</span><p className="font-mono text-warm-white">{inter.name} ({(inter.probability*100).toFixed(0)}%)</p></div>}
+                                        {r.intervention_type && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Type</span><p className="font-mono text-warm-white">{r.intervention_type}</p></div>}
+                                        {r.status && <div className="bg-graphite/40 rounded p-2"><span className="text-stone">Status</span><p className="font-mono text-warm-white">{r.status}</p></div>}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -1478,32 +1563,115 @@
         // Live View
         function LiveView() {
             const [events, setEvents] = useState([]);
-            const [connected, setConnected] = useState(false);
+            const [metrics, setMetrics] = useState(null);
+            const [recentInterventions, setRecentInterventions] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [lastUpdate, setLastUpdate] = useState(null);
+
+            async function pollData() {
+                try {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                    const [mRes, iRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/metrics`, { cache: 'no-store' }),
+                        fetch(`${API_BASE_URL}/api/interventions?limit=5`, { cache: 'no-store' })
+                    ]);
+
+                    const newEvents = [];
+                    if (mRes.ok) {
+                        const m = await mRes.json();
+                        setMetrics(m);
+                        newEvents.push({ time: timeStr, msg: `System healthy • ${m.verifiedInterventions || 0} verified • ${m.assetsUnderWatch || 0} assets watched`, type: 'ok' });
+                    }
+                    if (iRes.ok) {
+                        const i = await iRes.json();
+                        setRecentInterventions(i.records || []);
+                        if (i.count > 0) {
+                            const latest = i.records[0];
+                            newEvents.push({ time: timeStr, msg: `Latest: ${latest.asset_id} • ${latest.intervention_type} • ${latest.status}`, type: 'info' });
+                        }
+                    }
+
+                    setEvents(prev => {
+                        const combined = [...newEvents, ...prev].slice(0, 100);
+                        return combined;
+                    });
+                    setLastUpdate(now);
+                    setError(null);
+                } catch (err) {
+                    setError(err.message);
+                    setEvents(prev => [{ time: new Date().toLocaleTimeString('en-US', { hour12: false }), msg: `Poll error: ${err.message}`, type: 'error' }, ...prev].slice(0, 100));
+                } finally {
+                    setLoading(false);
+                }
+            }
+
             useEffect(() => {
-                setEvents([
-                    { time: '05:00', msg: 'Flask server running on port 5001', type: 'ok' },
-                    { time: '05:00', msg: 'Developer Asset Underwriter: operational', type: 'ok' },
-                    { time: '05:00', msg: 'Evidence-based scoring: enabled', type: 'ok' },
-                    { time: '05:00', msg: 'Audit log: active', type: 'ok' },
-                ]);
+                pollData();
+                const interval = setInterval(pollData, 10000);
+                return () => clearInterval(interval);
             }, []);
+
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <h2 className="text-3xl font-bold mb-2 text-orange">Live Activity</h2>
-                    <p className="text-stone mb-6">Real-time system events, API calls, and mining jobs.</p>
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></span>
-                        <span className="text-stone text-sm">{connected ? 'Live stream connected' : 'Live stream not connected — showing static log'}</span>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-3xl font-bold text-orange">Live Activity</h2>
+                            <p className="text-stone">Real-time system telemetry • Updates every 10s</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span className="text-stone text-sm">{lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : 'Connecting...'}</span>
+                        </div>
                     </div>
-                    <TerminalLog lines={events} />
-                    {!connected && (
-                        <div className="card-premium p-6 mt-4">
-                            <p className="text-stone text-sm">
-                                <strong className="text-orange">Note:</strong> Real-time streaming requires WebSocket or Server-Sent Events backend support.
-                                Current implementation shows the last known system state only.
-                            </p>
+
+                    {metrics && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                            <div className="card-premium p-4 text-center">
+                                <p className="metric-value text-2xl text-gold">{metrics.verifiedInterventions?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Verified</p>
+                            </div>
+                            <div className="card-premium p-4 text-center">
+                                <p className="metric-value text-2xl text-orange">{metrics.hiddenInfrastructure?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Hidden Infra</p>
+                            </div>
+                            <div className="card-premium p-4 text-center">
+                                <p className="metric-value text-2xl text-warm-white">{metrics.transformationLaws?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Transform Laws</p>
+                            </div>
+                            <div className="card-premium p-4 text-center">
+                                <p className="metric-value text-2xl text-blue-400">{metrics.assetsUnderWatch?.toLocaleString()}</p>
+                                <p className="text-xs text-stone">Assets Watch</p>
+                            </div>
                         </div>
                     )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h3 className="text-sm font-medium text-orange mb-3 uppercase tracking-wider">Event Log</h3>
+                            <TerminalLog lines={events} />
+                            {error && <p className="text-crimson text-xs mt-2">{error}</p>}
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-orange mb-3 uppercase tracking-wider">Recent Interventions</h3>
+                            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                                {recentInterventions.map((item, i) => (
+                                    <div key={i} className="card-premium p-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-xs text-warm-white">{item.asset_id}</span>
+                                            <span className={`badge ${item.status==='verified'?'badge-verified':item.status==='failed'?'badge-risk':'badge-undervalued'}`}>{item.status}</span>
+                                        </div>
+                                        <p className="text-stone text-xs mt-1">{item.intervention_type} • ${item.predicted_value?.toLocaleString()} • {item.planned_effort_days}d</p>
+                                    </div>
+                                ))}
+                                {recentInterventions.length === 0 && !loading && (
+                                    <p className="text-stone text-sm">No recent interventions.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
         }
@@ -1511,7 +1679,7 @@
         // Main App
         function App() {
             const [currentView, setCurrentView] = useState('radar');
-            const views = ['radar','alpha','search','underwriter','asset-desk','review-cards','portfolio','mine','interventions','ledger','competency','live'];
+            const views = ['radar','alpha','search','swipe','underwriter','asset-desk','review-cards','portfolio','mine','interventions','ledger','competency','live'];
 
             useEffect(() => {
                 function onKey(e) {
@@ -1529,6 +1697,7 @@
                         {currentView === 'radar' && <RadarView />}
                         {currentView === 'alpha' && <AlphaView />}
                         {currentView === 'search' && <SearchView />}
+                        {currentView === 'swipe' && <SwipeView />}
                         {currentView === 'underwriter' && <UnderwriterView />}
                         {currentView === 'asset-desk' && <AssetDeskView />}
                         {currentView === 'review-cards' && <ReviewCardsView />}
