@@ -493,13 +493,22 @@
                 fetch('/api/radar')
                     .then(res => {
                         console.log('Response status:', res.status);
+                        if (!res.ok) {
+                            throw new Error(`HTTP error! status: ${res.status}`);
+                        }
                         return res.json();
                     })
                     .then(data => {
                         console.log('Radar data received:', data);
                         console.log('Results count:', data.results?.length);
                         console.log('First result:', data.results?.[0]);
-                        setRepos(data.results || []);
+                        
+                        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                            setRepos(data.results);
+                        } else {
+                            console.warn('No results in data:', data);
+                            setRepos([]);
+                        }
                         setLoading(false);
                     })
                     .catch(err => {
