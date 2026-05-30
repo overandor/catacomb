@@ -12,6 +12,7 @@ from transformation_tracking import TransformationTracker
 from github_intervention_miner import GitHubInterventionMiner, seed_mined_interventions
 from catacomb_radar import CatacombRadar, RadarSignal
 from universe_classifier import UniverseClassifier, AssetMetrics, Universe
+from prediction_accuracy import PredictionAccuracyTracker
 from datetime import datetime
 import json
 import threading
@@ -30,6 +31,10 @@ elo_system = InnovationElo()
 transformation_tracker = TransformationTracker()
 radar = CatacombRadar()
 classifier = UniverseClassifier()
+accuracy_tracker = PredictionAccuracyTracker()
+
+# Load existing predictions from ledger
+accuracy_tracker.load_records_from_ledger(ledger)
 
 # Global variable for mining status
 mining_status = {"in_progress": False, "progress": 0, "total": 0, "message": ""}
@@ -201,6 +206,17 @@ def radar_allocation_api():
 @app.route('/api/health')
 def health():
     return jsonify({"status": "ok"})
+
+@app.route('/api/accuracy/report')
+def accuracy_report_api():
+    """Get prediction accuracy report."""
+    return jsonify(accuracy_tracker.get_accuracy_report())
+
+@app.route('/api/accuracy/baseline', methods=['POST'])
+def set_baseline_api():
+    """Set current metrics as baseline for drift calculation."""
+    accuracy_tracker.set_baseline()
+    return jsonify({"status": "baseline_set", "timestamp": datetime.utcnow().isoformat()})
 
 # Vercel serverless handler
 def handler(event, context):
