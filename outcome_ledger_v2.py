@@ -375,6 +375,36 @@ class OutcomeLedger:
         conn.close()
         return result
     
+    def get_interventions(self, limit: int = 1000, status: str = None) -> List[Dict[str, Any]]:
+        """Get all intervention records, optionally filtered by status."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        if status:
+            cursor.execute("""
+                SELECT * FROM interventions WHERE status = ? ORDER BY created_at DESC LIMIT ?
+            """, (status, limit))
+        else:
+            cursor.execute("""
+                SELECT * FROM interventions ORDER BY created_at DESC LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            result = dict(row)
+            for json_field in ['before_state', 'after_state', 'outcome_metrics', 'prediction_accuracy', 'predicted_outcome']:
+                if result.get(json_field):
+                    try:
+                        result[json_field] = json.loads(result[json_field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            results.append(result)
+        
+        conn.close()
+        return results
+    
     def get_training_dataset(self) -> List[Dict[str, Any]]:
         """Get all completed interventions for ML training."""
         conn = sqlite3.connect(self.db_path)

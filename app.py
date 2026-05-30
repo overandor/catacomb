@@ -306,6 +306,19 @@ def create_intervention():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/interventions', methods=['GET'])
+def list_interventions():
+    """List intervention records."""
+    try:
+        limit = request.args.get('limit', 1000, type=int)
+        status = request.args.get('status')
+        records = outcome_ledger.get_interventions(limit=limit, status=status)
+        return jsonify({"records": records, "count": len(records)})
+    except Exception as e:
+        logger.error(f"Failed to list interventions: {str(e)}")
+        return jsonify({"error": str(e), "records": [], "count": 0}), 500
+
+
 @app.route('/api/interventions/<record_id>/start', methods=['POST'])
 def start_intervention(record_id):
     """Start an intervention."""
@@ -1022,7 +1035,253 @@ def catacomb_radar():
             "count": 0,
             "error": str(e)
         })
-        
+
+
+# ============================================================================
+# COLLATERALOPS CAPITAL TRANSLATION API
+# ============================================================================
+
+def _repo_data_to_asset_record(repo_data: dict) -> AssetRecord:
+    """Convert existing Catacomb repo analysis into an AssetRecord."""
+    asset = AssetRecord(
+        asset_name=repo_data.get("name", "unknown"),
+        asset_type=AssetType.ORIGINAL_REPOSITORY,
+        source_type="github",
+        repo_url=repo_data.get("html_url") or repo_data.get("url"),
+        primary_language=repo_data.get("language", "unknown") or "unknown",
+        file_count=repo_data.get("file_count", 0),
+        total_size_bytes=repo_data.get("size", 0) * 1024,
+        build_status="unknown",
+        test_status="unknown",
+        license_status=("clean" if repo_data.get("license") else "unknown"),
+        documentation_score=50 if repo_data.get("has_readme") else 20,
+    )
+    asset.risk_register = RiskRegister(
+        ownership_risk="low" if repo_data.get("owner") else "medium",
+        originality_risk="low" if not repo_data.get("fork", False) else "high",
+        build_risk="unknown",
+        license_risk=("low" if repo_data.get("license") else "high"),
+        secret_risk="unknown",
+        market_risk="medium",
+        liquidation_risk="medium",
+    )
+    return asset
+
+
+@app.route('/api/collateral/analyze', methods=['POST'])
+def collateral_analyze():
+    """Run full CollateralOps appraisal on a repo."""
+    try:
+        data = request.get_json() or {}
+        owner = data.get('owner')
+        repo = data.get('repo')
+        if not owner or not repo:
+            return jsonify({"error": "owner and repo required"}), 400
+        orch = get_orchestrator()
+        repo_data = orch.analyze_repo(owner, repo)
+        asset = _repo_data_to_asset_record(repo_data)
+        asset.owner_claim = f"github:{owner}"
+        analysis = asset_improvement_agent.analyze_single_asset(asset, repo_data)
+        return jsonify({"collateral_ops_analysis": analysis, "repo_data": repo_data})
+    except Exception as e:
+        logger.error(f"Collateral analyze error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/lender_packet', methods=['POST'])
+def collateral_lender_packet():
+    """Generate a lender-ready Software Collateral Packet."""
+    try:
+        data = request.get_json() or {}
+        owner = data.get('owner')
+        repo = data.get('repo')
+        borrower_verified = data.get('borrower_verified', False)
+        if not owner or not repo:
+            return jsonify({"error": "owner and repo required"}), 400
+        orch = get_orchestrator()
+        repo_data = orch.analyze_repo(owner, repo)
+        asset = _repo_data_to_asset_record(repo_data)
+        asset.owner_claim = f"github:{owner}"
+        packet = lender_packet_gen.generate(asset, repo_data, borrower_verified)
+        summary = lender_packet_gen.generate_summary_text(packet)
+        return jsonify({"packet": packet.to_dict(), "lender_summary_text": summary})
+    except Exception as e:
+        logger.error(f"Lender packet error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/buyer_packet', methods=['POST'])
+def collateral_buyer_packet():
+    """Generate a buyer-facing acquisition packet."""
+    try:
+        data = request.get_json() or {}
+        owner = data.get('owner')
+        repo = data.get('repo')
+        asking_price = data.get('asking_price')
+        if not owner or not repo:
+            return jsonify({"error": "owner and repo required"}), 400
+        orch = get_orchestrator()
+        repo_data = orch.analyze_repo(owner, repo)
+        asset = _repo_data_to_asset_record(repo_data)
+        asset.owner_claim = f"github:{owner}"
+        from decimal import Decimal
+        price = Decimal(str(asking_price)) if asking_price else None
+        packet = buyer_packet_gen.generate(asset, repo_data, price)
+        return jsonify({"packet": packet.to_dict()})
+    except Exception as e:
+        logger.error(f"Buyer packet error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/portfolio_audit', methods=['POST'])
+def collateral_portfolio_audit():
+    """Run a portfolio-level asset improvement audit."""
+    try:
+        data = request.get_json() or {}
+        repos = data.get('repos', [])
+        if not repos:
+            return jsonify({"error": "repos list required"}), 400
+        assets = []
+        repo_data_map = {}
+        orch = get_orchestrator()
+        for item in repos:
+            owner = item.get('owner')
+            repo = item.get('repo')
+            if not owner or not repo:
+                continue
+            try:
+                repo_data = orch.analyze_repo(owner, repo)
+                asset = _repo_data_to_asset_record(repo_data)
+                asset.owner_claim = f"github:{owner}"
+                assets.append(asset)
+                repo_data_map[asset.asset_id] = repo_data
+            except Exception as e:
+                logger.warning(f"Skipping {owner}/{repo}: {e}")
+                continue
+        report = asset_improvement_agent.run_portfolio_audit(assets, repo_data_map)
+        return jsonify({"portfolio_report": report.to_dict(), "assets": [a.to_dict() for a in assets]})
+    except Exception as e:
+        logger.error(f"Portfolio audit error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/financeability', methods=['POST'])
+def collateral_financeability():
+    """Deep financeability analysis for a single asset."""
+    try:
+        data = request.get_json() or {}
+        owner = data.get('owner')
+        repo = data.get('repo')
+        if not owner or not repo:
+            return jsonify({"error": "owner and repo required"}), 400
+        orch = get_orchestrator()
+        repo_data = orch.analyze_repo(owner, repo)
+        asset = _repo_data_to_asset_record(repo_data)
+        asset.owner_claim = f"github:{owner}"
+        analysis = asset_improvement_agent.analyze_single_asset(asset, repo_data)
+        return jsonify({
+            "financeability_report": analysis.get("financeability_report"),
+            "valuation": analysis.get("valuation"),
+            "recommended_actions": analysis.get("recommended_actions"),
+            "one_best_next_action": analysis.get("one_best_next_action"),
+        })
+    except Exception as e:
+        logger.error(f"Financeability error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/agent_audit', methods=['POST'])
+def collateral_agent_audit():
+    """Audit AI agent work in a directory."""
+    try:
+        data = request.get_json() or {}
+        agent_name = data.get('agent_name', 'unknown')
+        directory = data.get('directory')
+        if not directory or not os.path.isdir(directory):
+            return jsonify({"error": "valid directory required"}), 400
+        report = agent_work_auditor.audit_directory(agent_name, directory)
+        return jsonify({"agent_labor_report": report.to_dict(), "summary_text": report.summary_text()})
+    except Exception as e:
+        logger.error(f"Agent audit error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/collateral/balance_sheet', methods=['POST'])
+def collateral_balance_sheet():
+    """Generate the software balance sheet for a portfolio."""
+    try:
+        data = request.get_json() or {}
+        repos = data.get('repos', [])
+        if not repos:
+            return jsonify({"error": "repos list required"}), 400
+        assets = []
+        repo_data_map = {}
+        orch = get_orchestrator()
+        for item in repos:
+            owner = item.get('owner')
+            repo = item.get('repo')
+            if not owner or not repo:
+                continue
+            try:
+                repo_data = orch.analyze_repo(owner, repo)
+                asset = _repo_data_to_asset_record(repo_data)
+                asset.owner_claim = f"github:{owner}"
+                assets.append(asset)
+                repo_data_map[asset.asset_id] = repo_data
+            except Exception as e:
+                logger.warning(f"Skipping {owner}/{repo}: {e}")
+                continue
+        asset_improvement_agent.run_portfolio_audit(assets, repo_data_map)
+        total_replacement = Decimal("0")
+        total_as_is = Decimal("0")
+        total_collateral = Decimal("0")
+        total_liquidation = Decimal("0")
+        financeable_count = 0
+        sale_candidates = 0
+        lender_ready = 0
+        needs_cleanup = 0
+        risk_blocked = 0
+        secrets_found = 0
+        for asset in assets:
+            if asset.valuation:
+                total_replacement += asset.valuation.replacement_cost_usd
+                total_as_is += asset.valuation.as_is_sale_value_usd
+                total_collateral += asset.valuation.collateral_support_value_usd
+                total_liquidation += asset.valuation.liquidation_value_usd
+                if asset.valuation.financeability_score >= 60:
+                    financeable_count += 1
+                if asset.valuation.financeability_score >= 50 and asset.buyer_universe:
+                    sale_candidates += 1
+                if asset.valuation.financeability_score >= 65:
+                    lender_ready += 1
+                if asset.valuation.financeability_score < 50:
+                    needs_cleanup += 1
+            if asset.risk_block_reasons:
+                risk_blocked += 1
+            if asset.secret_scan_status == "detected":
+                secrets_found += 1
+        total_score = sum(a.valuation.financeability_score for a in assets if a.valuation)
+        avg_score = total_score // len(assets) if assets else 0
+        return jsonify({
+            "balance_sheet": {
+                "total_strategic_value": str(total_replacement),
+                "buyer_today_value": str(total_as_is),
+                "collateral_support_value": str(total_collateral),
+                "liquidation_value": str(total_liquidation),
+                "total_assets": len(assets),
+                "financeable_assets": financeable_count,
+                "sale_candidates": sale_candidates,
+                "lender_ready": lender_ready,
+                "needs_cleanup": needs_cleanup,
+                "risk_blocked": risk_blocked,
+                "secrets_found": secrets_found,
+                "average_financeability_score": avg_score,
+            },
+            "assets": [a.to_dict() for a in assets],
+        })
+    except Exception as e:
+        logger.error(f"Balance sheet error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
