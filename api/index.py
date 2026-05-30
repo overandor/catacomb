@@ -33,7 +33,7 @@ transformation_tracker = TransformationTracker()
 radar = CatacombRadar()
 classifier = UniverseClassifier()
 accuracy_tracker = PredictionAccuracyTracker()
-package_miner = PackageEcosystemMiner()
+package_miner = PackageEcosystemMiner(db_path)
 
 # Load existing predictions from ledger
 accuracy_tracker.load_records_from_ledger(ledger)

@@ -46,8 +46,8 @@ class PackageEcosystemMiner:
     - crates.io (crates.io)
     """
     
-    def __init__(self):
-        self.ledger = OutcomeLedger()
+    def __init__(self, db_path: str = None):
+        self.ledger = OutcomeLedger(db_path) if db_path else OutcomeLedger()
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Catacomb-PackageMiner/1.0'
