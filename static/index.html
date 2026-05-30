@@ -294,7 +294,7 @@
 
             useEffect(() => {
                 // Fetch metrics from API
-                fetch('/api/metrics')
+                fetch('/api/metrics', { cache: 'no-store' })
                     .then(res => res.json())
                     .then(data => setMetrics(data))
                     .catch(() => {
@@ -488,33 +488,36 @@
         function RadarView() {
             const [repos, setRepos] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            async function loadRadar() {
+                setLoading(true);
+                setError(null);
+                try {
+                    const res = await fetch('/api/radar', { cache: 'no-store' });
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
+                    const data = await res.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    if (Array.isArray(data.results) && data.results.length > 0) {
+                        setRepos(data.results);
+                    } else {
+                        setRepos([]);
+                    }
+                } catch (err) {
+                    console.error('Radar load failed:', err);
+                    setError(err.message);
+                    setRepos([]);
+                } finally {
+                    setLoading(false);
+                }
+            }
 
             useEffect(() => {
-                fetch('/api/radar')
-                    .then(res => {
-                        console.log('Response status:', res.status);
-                        if (!res.ok) {
-                            throw new Error(`HTTP error! status: ${res.status}`);
-                        }
-                        return res.json();
-                    })
-                    .then(data => {
-                        console.log('Radar data received:', data);
-                        console.log('Results count:', data.results?.length);
-                        console.log('First result:', data.results?.[0]);
-                        
-                        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-                            setRepos(data.results);
-                        } else {
-                            console.warn('No results in data:', data);
-                            setRepos([]);
-                        }
-                        setLoading(false);
-                    })
-                    .catch(err => {
-                        console.error('Failed to load radar:', err);
-                        setLoading(false);
-                    });
+                loadRadar();
             }, []);
 
             if (loading) {
@@ -533,18 +536,22 @@
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <HeroSection />
-                    <div className="mb-4 p-4 bg-orange/10 border border-orange/20 rounded-lg">
-                        <p className="text-orange text-xs font-mono">Debug: repos.length = {repos.length}, loading = {loading.toString()}</p>
-                    </div>
+                    {error && (
+                        <div className="mb-4 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
+                            <p className="text-crimson text-sm font-medium">Error loading radar: {error}</p>
+                            <button onClick={loadRadar} className="mt-2 text-xs text-orange hover:text-gold underline">Retry</button>
+                        </div>
+                    )}
                     <div className="space-y-4">
                         {repos.length === 0 ? (
                             <div className="card-premium p-12 text-center">
                                 <p className="text-stone text-lg">No hidden infrastructure opportunities detected</p>
                                 <p className="text-stone text-sm mt-2">Initiate mining sequence to discover assets</p>
+                                <button onClick={loadRadar} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Refresh</button>
                             </div>
                         ) : (
                             repos.map((item, index) => (
-                                <RadarCard key={item.repo} item={item} rank={index + 1} />
+                                <RadarCard key={`${item.repo}-${index}`} item={item} rank={index + 1} />
                             ))
                         )}
                     </div>
@@ -556,19 +563,27 @@
         function AlphaView() {
             const [repos, setRepos] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
 
-            useEffect(() => {
-                fetch('/api/discover/promising')
-                    .then(res => res.json())
-                    .then(data => {
-                        setRepos(data.results || []);
-                        setLoading(false);
-                    })
-                    .catch(err => {
-                        console.error('Failed to load alpha:', err);
-                        setLoading(false);
-                    });
-            }, []);
+            async function loadAlpha() {
+                setLoading(true);
+                setError(null);
+                try {
+                    const res = await fetch('/api/discover/promising', { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+                    setRepos(Array.isArray(data.results) ? data.results : []);
+                } catch (err) {
+                    console.error('Alpha load failed:', err);
+                    setError(err.message);
+                    setRepos([]);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            useEffect(() => { loadAlpha(); }, []);
 
             if (loading) {
                 return (
@@ -587,14 +602,21 @@
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-orange">Alpha Universe</h2>
                     <p className="text-stone mb-6">Assets with positive Innovation Alpha (undervalued)</p>
+                    {error && (
+                        <div className="mb-4 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
+                            <p className="text-crimson text-sm font-medium">Error: {error}</p>
+                            <button onClick={loadAlpha} className="mt-2 text-xs text-orange hover:text-gold underline">Retry</button>
+                        </div>
+                    )}
                     <div className="space-y-4">
                         {repos.length === 0 ? (
                             <div className="card-premium p-12 text-center">
                                 <p className="text-stone text-lg">No undervalued assets in current universe</p>
+                                <button onClick={loadAlpha} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Refresh</button>
                             </div>
                         ) : (
                             repos.map((item, index) => (
-                                <RadarCard key={item.repo} item={item} rank={index + 1} />
+                                <RadarCard key={`${item.repo}-${index}`} item={item} rank={index + 1} />
                             ))
                         )}
                     </div>
@@ -606,19 +628,27 @@
         function InterventionView() {
             const [interventions, setInterventions] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
 
-            useEffect(() => {
-                fetch('/api/radar')
-                    .then(res => res.json())
-                    .then(data => {
-                        setInterventions(data.results || []);
-                        setLoading(false);
-                    })
-                    .catch(err => {
-                        console.error('Failed to load interventions:', err);
-                        setLoading(false);
-                    });
-            }, []);
+            async function loadInterventions() {
+                setLoading(true);
+                setError(null);
+                try {
+                    const res = await fetch('/api/radar', { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+                    setInterventions(Array.isArray(data.results) ? data.results : []);
+                } catch (err) {
+                    console.error('Interventions load failed:', err);
+                    setError(err.message);
+                    setInterventions([]);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            useEffect(() => { loadInterventions(); }, []);
 
             if (loading) {
                 return (
@@ -637,14 +667,21 @@
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-orange">Intervention Opportunities</h2>
                     <p className="text-stone mb-6">Ranked by expected value created per engineering day</p>
+                    {error && (
+                        <div className="mb-4 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
+                            <p className="text-crimson text-sm font-medium">Error: {error}</p>
+                            <button onClick={loadInterventions} className="mt-2 text-xs text-orange hover:text-gold underline">Retry</button>
+                        </div>
+                    )}
                     <div className="space-y-4">
                         {interventions.length === 0 ? (
                             <div className="card-premium p-12 text-center">
                                 <p className="text-stone text-lg">No intervention opportunities available</p>
+                                <button onClick={loadInterventions} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Refresh</button>
                             </div>
                         ) : (
                             interventions.map((item, index) => (
-                                <div key={item.repo} className="card-premium p-6">
+                                <div key={`${item.repo}-${index}`} className="card-premium p-6">
                                     <div className="flex items-start justify-between mb-4">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
@@ -823,19 +860,27 @@
         function LedgerView() {
             const [records, setRecords] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
 
-            useEffect(() => {
-                fetch('/api/ledger')
-                    .then(res => res.json())
-                    .then(data => {
-                        setRecords(data.records || []);
-                        setLoading(false);
-                    })
-                    .catch(err => {
-                        console.error('Failed to load ledger:', err);
-                        setLoading(false);
-                    });
-            }, []);
+            async function loadLedger() {
+                setLoading(true);
+                setError(null);
+                try {
+                    const res = await fetch('/api/ledger', { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+                    setRecords(Array.isArray(data.records) ? data.records : []);
+                } catch (err) {
+                    console.error('Ledger load failed:', err);
+                    setError(err.message);
+                    setRecords([]);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            useEffect(() => { loadLedger(); }, []);
 
             if (loading) {
                 return (
@@ -854,6 +899,12 @@
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-orange">Outcome Ledger</h2>
                     <p className="text-stone mb-6">Institutional audit trail for intervention outcomes</p>
+                    {error && (
+                        <div className="mb-4 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
+                            <p className="text-crimson text-sm font-medium">Error: {error}</p>
+                            <button onClick={loadLedger} className="mt-2 text-xs text-orange hover:text-gold underline">Retry</button>
+                        </div>
+                    )}
                     <div className="card-premium overflow-hidden">
                         <table className="w-full">
                             <thead>
@@ -870,12 +921,13 @@
                                 {records.length === 0 ? (
                                     <tr>
                                         <td colSpan="6" className="p-12 text-center text-stone">
-                                            No ledger records available
+                                            <p>No ledger records available</p>
+                                            <button onClick={loadLedger} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Refresh</button>
                                         </td>
                                     </tr>
                                 ) : (
                                     records.map((record, index) => (
-                                        <tr key={index} className="border-b border-orange/5 hover:bg-graphite/30 transition-colors">
+                                        <tr key={`${record.asset_id}-${index}`} className="border-b border-orange/5 hover:bg-graphite/30 transition-colors">
                                             <td className="p-4 font-mono text-sm">{record.asset_id || 'N/A'}</td>
                                             <td className="p-4 text-sm">{record.intervention_type || 'N/A'}</td>
                                             <td className="p-4 font-mono text-sm">${record.predicted_value?.toFixed(2) || '0.00'}</td>
@@ -903,15 +955,24 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [saved, setSaved] = useState([]);
             const [repos, setRepos] = useState([]);
+            const [error, setError] = useState(null);
 
-            useEffect(() => {
-                fetch('/api/discover/promising')
-                    .then(res => res.json())
-                    .then(data => {
-                        setRepos(data.results || []);
-                    })
-                    .catch(err => console.error('Failed to load repos:', err));
-            }, []);
+            async function loadSwipe() {
+                setError(null);
+                try {
+                    const res = await fetch('/api/discover/promising', { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+                    setRepos(Array.isArray(data.results) ? data.results : []);
+                } catch (err) {
+                    console.error('Swipe load failed:', err);
+                    setError(err.message);
+                    setRepos([]);
+                }
+            }
+
+            useEffect(() => { loadSwipe(); }, []);
 
             const handleSwipe = (direction) => {
                 if (direction === 'right' && repos[currentIndex]) {
@@ -925,7 +986,14 @@
                     <div className="max-w-7xl mx-auto px-6 py-8">
                         <h2 className="text-3xl font-bold mb-6 text-orange">Swipe Discovery</h2>
                         <div className="card-premium p-12 text-center">
-                            <p className="text-stone">Loading assets...</p>
+                            {error ? (
+                                <>
+                                    <p className="text-crimson text-sm font-medium">Error: {error}</p>
+                                    <button onClick={loadSwipe} className="mt-4 px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded hover:bg-orange/30 transition-all">Retry</button>
+                                </>
+                            ) : (
+                                <p className="text-stone">Loading assets...</p>
+                            )}
                         </div>
                     </div>
                 );
