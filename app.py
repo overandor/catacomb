@@ -33,7 +33,18 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-CORS(app)
+
+# Configure CORS for hybrid deployment (Vercel frontend + Render backend)
+frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+backend_url = os.environ.get('BACKEND_URL', 'http://localhost:5001')
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [frontend_url, "http://localhost:3000", "http://localhost:5001", "*"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -43,11 +54,15 @@ login_manager.login_view = 'login'
 # Initialize OAuth
 init_oauth(app)
 
+# Base directory for absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
+
 # Global orchestrator instance
 orchestrator = None
 
 # Global outcome ledger instance
-outcome_ledger = OutcomeLedger()
+outcome_ledger = OutcomeLedger(db_path=DB_PATH)
 
 # Global valuation instance
 repo_valuation = RepoValuation()
@@ -565,7 +580,7 @@ def discover_promising_repos():
     try:
         import sqlite3
         import json
-        conn = sqlite3.connect('outcome_ledger.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -791,7 +806,7 @@ def get_metrics():
     try:
         # Get intervention count from outcome ledger
         import sqlite3
-        conn = sqlite3.connect('outcome_ledger.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute("SELECT COUNT(*) FROM interventions WHERE verification_status = ?", (VerificationStatus.VERIFIED.value,))
@@ -841,7 +856,7 @@ def get_ledger():
     """Get intervention ledger records."""
     try:
         import sqlite3
-        conn = sqlite3.connect('outcome_ledger.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -900,7 +915,7 @@ def catacomb_radar():
     try:
         import sqlite3
         import json
-        conn = sqlite3.connect('outcome_ledger.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         

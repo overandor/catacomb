@@ -24,8 +24,8 @@ GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID')
 GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
 
-# Redirect URI
-REDIRECT_URI = os.environ.get('OAUTH_REDIRECT_URI', 'http://localhost:5000/auth/callback')
+# Redirect URI - supports both local and production deployments
+REDIRECT_URI = os.environ.get('OAUTH_REDIRECT_URI', 'http://localhost:5001/auth/callback')
 
 
 class OAuthProvider:

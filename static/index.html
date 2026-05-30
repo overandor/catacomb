@@ -17,6 +17,11 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
+        // Backend API URL - configure for hybrid deployment
+        const API_BASE_URL = window.API_BASE_URL || 
+                           (window.location.hostname === 'localhost' ? 'http://localhost:5001' : 
+                            window.location.origin.replace('://', '://api-'));
+
         // Header Component
         function Header({ currentView, setCurrentView }) {
             const navItems = [
@@ -86,7 +91,7 @@
 
             useEffect(() => {
                 // Fetch metrics from API
-                fetch('/api/metrics', { cache: 'no-store' })
+                fetch(`${API_BASE_URL}/api/metrics`, { cache: 'no-store' })
                     .then(res => res.json())
                     .then(data => setMetrics(data))
                     .catch(() => {
@@ -286,7 +291,7 @@
                 setLoading(true);
                 setError(null);
                 try {
-                    const res = await fetch('/api/radar', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/api/radar`, { cache: 'no-store' });
                     if (!res.ok) {
                         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                     }
@@ -361,7 +366,7 @@
                 setLoading(true);
                 setError(null);
                 try {
-                    const res = await fetch('/api/discover/promising', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/api/discover/promising`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
@@ -427,11 +432,11 @@
                 setLoading(true);
                 setError(null);
                 try {
-                    const res = await fetch('/api/radar', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/api/interventions?limit=200`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
-                    setInterventions(Array.isArray(data.results) ? data.results : []);
+                    setInterventions(Array.isArray(data.records) ? data.records : []);
                 } catch (err) {
                     console.error('Interventions load failed:', err);
                     setError(err.message);
@@ -660,7 +665,7 @@
                 setLoading(true);
                 setError(null);
                 try {
-                    const res = await fetch('/api/ledger', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/api/ledger`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
@@ -755,7 +760,7 @@
             async function loadSwipe() {
                 setError(null);
                 try {
-                    const res = await fetch('/api/discover/promising', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/api/discover/promising`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
@@ -930,13 +935,13 @@
                     if (searchType === 'repo') {
                         const parts = query.trim().split('/');
                         if (parts.length !== 2) throw new Error('Format: owner/repo');
-                        url = `/api/analyze/repo/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+                        url = `${API_BASE_URL}/api/analyze/repo/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
                     } else if (searchType === 'topic') {
-                        url = '/api/analyze/topic';
+                        url = `${API_BASE_URL}/api/analyze/topic`;
                         method = 'POST';
                         body = JSON.stringify({ topic: query.trim(), limit: 10 });
                     } else if (searchType === 'user') {
-                        url = '/api/analyze/user';
+                        url = `${API_BASE_URL}/api/analyze/user`;
                         method = 'POST';
                         body = JSON.stringify({ username: query.trim(), limit: 10 });
                     }
@@ -964,7 +969,7 @@
                     let hasMore = true;
                     
                     while (hasMore) {
-                        const res = await fetch('/api/analyze/user', {
+                        const res = await fetch(`${API_BASE_URL}/api/analyze/user`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username, limit: 50, page })
