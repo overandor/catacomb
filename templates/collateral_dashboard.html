@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollateralOps Terminal — Asset Desk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #020204;
+            --bg-surface: #0a0a0f;
+            --bg-elevated: #12121a;
+            --glass: rgba(255,255,255,0.03);
+            --glass-border: rgba(255,255,255,0.06);
+            --text-primary: #f0f0f8;
+            --text-secondary: #8a8a9e;
+            --text-muted: #4a4a5e;
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0,240,255,0.12);
+            --orange: #ff6b35;
+            --orange-dim: rgba(255,107,53,0.12);
+            --purple: #c084fc;
+            --purple-dim: rgba(192,132,252,0.12);
+            --green: #34d399;
+            --green-dim: rgba(52,211,153,0.12);
+            --gold: #fbbf24;
+            --red: #f87171;
+            --font-sans: 'Space Grotesk', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* App shell */
+        .app-shell {
+            display: grid;
+            grid-template-rows: 48px 1fr;
+            grid-template-columns: 64px 1fr;
+            height: 100vh;
+        }
+        .topbar {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar-logo {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 700; font-size: 14px; letter-spacing: 0.05em;
+        }
+        .topbar-logo span { color: var(--cyan); }
+        .topbar-logo-mark {
+            width: 24px; height: 24px;
+            border: 1.5px solid var(--cyan);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 12px var(--cyan-dim);
+        }
+        .topbar-logo-mark::before {
+            content: ''; position: absolute;
+            width: 8px; height: 8px;
+            background: var(--cyan); border-radius: 2px;
+            transform: rotate(45deg);
+        }
+        .topbar-status {
+            display: flex; align-items: center; gap: 8px;
+            font-family: var(--font-mono); font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px 12px;
+            border-radius: 6px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+        }
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .topbar-btn {
+            padding: 6px 14px; border-radius: 6px;
+            background: var(--glass); border: 1px solid var(--glass-border);
+            color: var(--text-secondary); font-size: 12px;
+            font-family: var(--font-mono); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .topbar-btn:hover { border-color: var(--cyan); color: var(--text-primary); }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--glass-border);
+            display: flex; flex-direction: column;
+            align-items: center; padding: 16px 0;
+            gap: 8px;
+        }
+        .sidebar-item {
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .sidebar-item:hover, .sidebar-item.active {
+            background: var(--cyan-dim);
+            color: var(--cyan);
+        }
+        .sidebar-item.active::after {
+            content: ''; position: absolute;
+            left: -1px; top: 50%; transform: translateY(-50%);
+            width: 2px; height: 20px;
+            background: var(--cyan); border-radius: 1px;
+        }
+
+        /* Main area */
+        .main {
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .main::-webkit-scrollbar { width: 4px; }
+        .main::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
+
+        /* Grid layouts */
+        .dash-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            opacity: 0.3;
+        }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 13px; font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .card-value {
+            font-family: var(--font-mono);
+            font-size: 28px; font-weight: 700;
+        }
+        .card-value.cyan { color: var(--cyan); }
+        .card-value.green { color: var(--green); }
+        .card-value.orange { color: var(--orange); }
+        .card-value.purple { color: var(--purple); }
+        .card-value.gold { color: var(--gold); }
+
+        /* Span classes */
+        .span-3 { grid-column: span 3; }
+        .span-4 { grid-column: span 4; }
+        .span-6 { grid-column: span 6; }
+        .span-8 { grid-column: span 8; }
+        .span-12 { grid-column: span 12; }
+        @media (max-width: 1100px) {
+            .span-3, .span-4 { grid-column: span 6; }
+            .span-6, .span-8 { grid-column: span 12; }
+        }
+        @media (max-width: 700px) {
+            .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: span 12; }
+        }
+
+        /* Input section */
+        .input-row {
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .input-field {
+            flex: 1; min-width: 200px;
+            background: var(--bg-deep);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus { border-color: var(--cyan); }
+        .input-field::placeholder { color: var(--text-muted); }
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-sans);
+        }
+        .btn-cyan {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: var(--bg-deep);
+        }
+        .btn-cyan:hover {
+            box-shadow: 0 0 30px var(--cyan-dim);
+            transform: translateY(-1px);
+        }
+        .btn-orange {
+            background: linear-gradient(135deg, var(--orange), #ff8c5a);
+            color: var(--bg-deep);
+        }
+        .btn-purple {
+            background: linear-gradient(135deg, var(--purple), #a78bfa);
+            color: var(--bg-deep);
+        }
+        .btn-green {
+            background: linear-gradient(135deg, var(--green), #6ee7b7);
+            color: var(--bg-deep);
+        }
+
+        /* Score ring */
+        .score-ring {
+            width: 140px; height: 140px;
+            position: relative;
+            margin: 0 auto 16px;
+        }
+        .score-ring svg { transform: rotate(-90deg); }
+        .score-ring .track { stroke: var(--glass-border); stroke-width: 8; fill: none; }
+        .score-ring .progress {
+            stroke: var(--cyan); stroke-width: 8; fill: none;
+            stroke-linecap: round;
+            stroke-dasharray: 377; stroke-dashoffset: 377;
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+        .score-ring .score-text {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .score-ring .score-num {
+            font-family: var(--font-mono);
+            font-size: 36px; font-weight: 700;
+            color: var(--cyan);
+        }
+        .score-ring .score-label {
+            font-size: 11px; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.1em;
+        }
+
+        /* Valuation bars */
+        .val-bar {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 10px;
+        }
+        .val-bar-label {
+            font-family: var(--font-mono); font-size: 11px;
+            color: var(--text-muted); min-width: 140px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .val-bar-track {
+            flex: 1; height: 8px;
+            background: var(--glass);
+            border-radius: 4px; overflow: hidden;
+        }
+        .val-bar-fill {
+            height: 100%; border-radius: 4px;
+            transition: width 1s ease-out;
+        }
+        .val-bar-value {
+            font-family: var(--font-mono); font-size: 12px;
+            color: var(--text-secondary); min-width: 80px; text-align: right;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            font-family: var(--font-mono); font-size: 12px;
+        }
+        .data-table th {
+            text-align: left; padding: 10px 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: 10px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+        .data-table tr:hover td { background: var(--glass); color: var(--text-primary); }
+        .badge {
+            display: inline-block; padding: 2px 8px;
+            border-radius: 4px; font-size: 10px; font-weight: 600;
+        }
+        .badge-green { background: var(--green-dim); color: var(--green); }
+        .badge-orange { background: var(--orange-dim); color: var(--orange); }
+        .badge-purple { background: var(--purple-dim); color: var(--purple); }
+        .badge-red { background: rgba(248,113,113,0.12); color: var(--red); }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+        .tab {
+            padding: 8px 16px; border-radius: 8px;
+            font-size: 12px; font-weight: 500;
+            color: var(--text-muted); cursor: pointer;
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .tab:hover { color: var(--text-primary); }
+        .tab.active {
+            background: var(--cyan-dim);
+            color: var(--cyan);
+            border-color: rgba(0,240,255,0.15);
+        }
+
+        /* Output panel */
+        .output-panel {
+            background: var(--bg-deep);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .output-panel .json-key { color: var(--purple); }
+        .output-panel .json-str { color: var(--green); }
+        .output-panel .json-num { color: var(--orange); }
+        .output-panel .json-bool { color: var(--cyan); }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid var(--glass-border);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(2,2,4,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px; width: 90%;
+        }
+        .modal-card h3 { margin-bottom: 12px; }
+        .modal-card p { color: var(--text-secondary); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="topbar">
+            <div class="topbar-left">
+                <div class="topbar-logo">
+                    <div class="topbar-logo-mark"></div>
+                    Collateral<span>Ops</span>
+                </div>
+                <div class="topbar-status">
+                    <span class="status-dot"></span>
+                    SYSTEM ONLINE — v2.0
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="topbar-btn" onclick="window.location.href='/'">Landing</button>
+                <button class="topbar-btn" onclick="showModal('About','CollateralOps v2.0 — Capital Translation Machine. Production ready.')">About</button>
+            </div>
+        </div>
+
+        <nav class="sidebar">
+            <div class="sidebar-item active" title="Asset Desk" onclick="switchTab('desk')">&#128200;</div>
+            <div class="sidebar-item" title="Analyze Repo" onclick="switchTab('analyze')">&#128269;</div>
+            <div class="sidebar-item" title="Portfolio Audit" onclick="switchTab('portfolio')">&#128203;</div>
+            <div class="sidebar-item" title="Agent Audit" onclick="switchTab('agent')">&#129302;</div>
+        </nav>
+
+        <main class="main">
+            <!-- ASSET DESK TAB -->
+            <div id="tab-desk" class="tab-content">
+                <div class="dash-grid">
+                    <div class="card span-3">
+                        <div class="card-header"><div class="card-title">Total Assets</div></div>
+                        <div class="card-value cyan" id="stat-total">0</div>
+                    </div>
+                    <div class="card span-3">
+                        <div class="card-header"><div class="card-title">Financeable</div></div>
+                        <div class="card-value green" id="stat-financeable">0</div>
+                    </div>
+                    <div class="card span-3">
+                        <div class="card-header"><div class="card-title">Avg Score</div></div>
+                        <div class="card-value purple" id="stat-avg">0</div>
+                    </div>
+                    <div class="card span-3">
+                        <div class="card-header"><div class="card-title">Lender Ready</div></div>
+                        <div class="card-value gold" id="stat-lender">0</div>
+                    </div>
+
+                    <div class="card span-6">
+                        <div class="card-header">
+                            <div class="card-title">Financeability Score</div>
+                        </div>
+                        <div class="score-ring" id="score-ring">
+                            <svg width="140" height="140" viewBox="0 0 140 140">
+                                <circle class="track" cx="70" cy="70" r="60"/>
+                                <circle class="progress" id="score-progress" cx="70" cy="70" r="60"/>
+                            </svg>
+                            <div class="score-text">
+                                <div class="score-num" id="score-num">0</div>
+                                <div class="score-label">Score</div>
+                            </div>
+                        </div>
+                        <div class="val-bar">
+                            <span class="val-bar-label">Replacement Cost</span>
+                            <div class="val-bar-track"><div class="val-bar-fill" id="bar-replacement" style="width:0%;background:var(--cyan)"></div></div>
+                            <span class="val-bar-value" id="val-replacement">$0</span>
+                        </div>
+                        <div class="val-bar">
+                            <span class="val-bar-label">As-Is Value</span>
+                            <div class="val-bar-track"><div class="val-bar-fill" id="bar-as-is" style="width:0%;background:var(--green)"></div></div>
+                            <span class="val-bar-value" id="val-as-is">$0</span>
+                        </div>
+                        <div class="val-bar">
+                            <span class="val-bar-label">Collateral Support</span>
+                            <div class="val-bar-track"><div class="val-bar-fill" id="bar-collateral" style="width:0%;background:var(--orange)"></div></div>
+                            <span class="val-bar-value" id="val-collateral">$0</span>
+                        </div>
+                        <div class="val-bar">
+                            <span class="val-bar-label">Liquidation</span>
+                            <div class="val-bar-track"><div class="val-bar-fill" id="bar-liquidation" style="width:0%;background:var(--purple)"></div></div>
+                            <span class="val-bar-value" id="val-liquidation">$0</span>
+                        </div>
+                    </div>
+
+                    <div class="card span-6">
+                        <div class="card-header"><div class="card-title">Quick Actions</div></div>
+                        <div class="input-row" style="margin-bottom:16px">
+                            <input type="text" class="input-field" id="qa-owner" placeholder="owner (e.g. facebook)">
+                            <input type="text" class="input-field" id="qa-repo" placeholder="repo (e.g. react)">
+                        </div>
+                        <div class="input-row" style="margin-bottom:16px">
+                            <button class="btn-action btn-cyan" onclick="runAnalyze()">Analyze</button>
+                            <button class="btn-action btn-orange" onclick="runLenderPacket()">Lender Packet</button>
+                            <button class="btn-action btn-purple" onclick="runBuyerPacket()">Buyer Packet</button>
+                        </div>
+                        <div class="input-row">
+                            <button class="btn-action btn-green" onclick="runFinanceability()">Financeability</button>
+                        </div>
+                        <div style="margin-top:16px">
+                            <div id="qa-loading" style="display:none;align-items:center;gap:10px">
+                                <div class="spinner"></div>
+                                <span style="font-size:12px;color:var(--text-muted)">Analyzing repository...</span>
+                            </div>
+                            <div class="output-panel" id="qa-output" style="display:none;margin-top:12px"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANALYZE TAB -->
+            <div id="tab-analyze" class="tab-content" style="display:none">
+                <div class="dash-grid">
+                    <div class="card span-12">
+                        <div class="card-header"><div class="card-title">Single Repository Analysis</div></div>
+                        <div class="input-row" style="margin-bottom:20px">
+                            <input type="text" class="input-field" id="analyze-owner" placeholder="GitHub owner">
+                            <input type="text" class="input-field" id="analyze-repo" placeholder="Repository name">
+                            <button class="btn-action btn-cyan" onclick="runFullAnalyze()">Run Full Appraisal</button>
+                        </div>
+                        <div id="analyze-loading" style="display:none;align-items:center;gap:10px;margin-bottom:16px">
+                            <div class="spinner"></div>
+                            <span style="font-size:12px;color:var(--text-muted)">Running six-value appraisal...</span>
+                        </div>
+                        <div class="output-panel" id="analyze-output" style="display:none"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PORTFOLIO TAB -->
+            <div id="tab-portfolio" class="tab-content" style="display:none">
+                <div class="dash-grid">
+                    <div class="card span-12">
+                        <div class="card-header"><div class="card-title">Portfolio Audit</div></div>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">
+                            Enter up to 50 repositories (owner/repo pairs, one per line) to run a portfolio-level balance sheet and improvement audit.
+                        </p>
+                        <textarea class="input-field" id="portfolio-repos" rows="6" placeholder="facebook/react&#10;vercel/next.js&#10;rust-lang/rust" style="margin-bottom:16px;resize:vertical"></textarea>
+                        <div class="input-row">
+                            <button class="btn-action btn-cyan" onclick="runPortfolioAudit()">Run Portfolio Audit</button>
+                            <button class="btn-action btn-orange" onclick="runBalanceSheet()">Generate Balance Sheet</button>
+                        </div>
+                        <div id="portfolio-loading" style="display:none;align-items:center;gap:10px;margin-top:16px">
+                            <div class="spinner"></div>
+                            <span style="font-size:12px;color:var(--text-muted)">Analyzing portfolio concurrently...</span>
+                        </div>
+                        <div class="output-panel" id="portfolio-output" style="display:none;margin-top:16px"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AGENT AUDIT TAB -->
+            <div id="tab-agent" class="tab-content" style="display:none">
+                <div class="dash-grid">
+                    <div class="card span-12">
+                        <div class="card-header"><div class="card-title">Agent Work Auditor</div></div>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">
+                            Audit AI agent work in a local directory. Generates CFO-readable reports on gross labor value, cleanup costs, and capitalizable work.
+                        </p>
+                        <div class="input-row" style="margin-bottom:16px">
+                            <input type="text" class="input-field" id="agent-name" placeholder="Agent name (e.g. windsurf)" value="windsurf">
+                            <input type="text" class="input-field" id="agent-directory" placeholder="Directory path (absolute)">
+                            <button class="btn-action btn-cyan" onclick="runAgentAudit()">Audit Directory</button>
+                        </div>
+                        <div id="agent-loading" style="display:none;align-items:center;gap:10px;margin-bottom:16px">
+                            <div class="spinner"></div>
+                            <span style="font-size:12px;color:var(--text-muted)">Scanning directory for agent artifacts...</span>
+                        </div>
+                        <div class="output-panel" id="agent-output" style="display:none"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <h3 id="modal-title">Title</h3>
+            <p id="modal-body">Body</p>
+            <button class="btn-action btn-cyan" onclick="closeModal()" style="width:100%">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.getElementById('tab-' + name).style.display = 'block';
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Modal
+        function showModal(title, body) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            document.getElementById('modal').classList.add('show');
+        }
+        function closeModal() { document.getElementById('modal').classList.remove('show'); }
+        document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+
+        // JSON syntax highlighting
+        function highlightJSON(obj, indent = 0) {
+            if (obj === null) return '<span class="json-bool">null</span>';
+            if (typeof obj === 'boolean') return '<span class="json-bool">' + obj + '</span>';
+            if (typeof obj === 'number') return '<span class="json-num">' + obj + '</span>';
+            if (typeof obj === 'string') return '<span class="json-str">"' + obj + '"</span>';
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) return '[]';
+                let s = '[\n';
+                obj.forEach((v, i) => { s += '  '.repeat(indent+1) + highlightJSON(v, indent+1) + (i < obj.length-1 ? ',' : '') + '\n'; });
+                return s + '  '.repeat(indent) + ']';
+            }
+            let s = '{\n';
+            const keys = Object.keys(obj);
+            keys.forEach((k, i) => { s += '  '.repeat(indent+1) + '<span class="json-key">"' + k + '"</span>: ' + highlightJSON(obj[k], indent+1) + (i < keys.length-1 ? ',' : '') + '\n'; });
+            return s + '  '.repeat(indent) + '}';
+        }
+
+        // API helpers
+        async function postJSON(url, body) {
+            const r = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return r.json();
+        }
+
+        function setLoading(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+        function showOutput(id, data) {
+            const el = document.getElementById(id);
+            el.style.display = 'block';
+            el.innerHTML = highlightJSON(data);
+        }
+
+        // Quick actions
+        async function runAnalyze() {
+            const owner = document.getElementById('qa-owner').value;
+            const repo = document.getElementById('qa-repo').value;
+            if (!owner || !repo) { showModal('Error', 'Owner and repo required'); return; }
+            setLoading('qa-loading', true);
+            const data = await postJSON('/api/collateral/analyze', { owner, repo });
+            setLoading('qa-loading', false);
+            showOutput('qa-output', data);
+            if (data.collateral_ops_analysis && data.collateral_ops_analysis.valuation) {
+                updateScoreRing(data.collateral_ops_analysis.valuation.financeability_score || 0);
+                updateValuationBars(data.collateral_ops_analysis.valuation);
+            }
+        }
+
+        async function runLenderPacket() {
+            const owner = document.getElementById('qa-owner').value;
+            const repo = document.getElementById('qa-repo').value;
+            if (!owner || !repo) { showModal('Error', 'Owner and repo required'); return; }
+            setLoading('qa-loading', true);
+            const data = await postJSON('/api/collateral/lender_packet', { owner, repo });
+            setLoading('qa-loading', false);
+            showOutput('qa-output', data);
+        }
+
+        async function runBuyerPacket() {
+            const owner = document.getElementById('qa-owner').value;
+            const repo = document.getElementById('qa-repo').value;
+            if (!owner || !repo) { showModal('Error', 'Owner and repo required'); return; }
+            setLoading('qa-loading', true);
+            const data = await postJSON('/api/collateral/buyer_packet', { owner, repo });
+            setLoading('qa-loading', false);
+            showOutput('qa-output', data);
+        }
+
+        async function runFinanceability() {
+            const owner = document.getElementById('qa-owner').value;
+            const repo = document.getElementById('qa-repo').value;
+            if (!owner || !repo) { showModal('Error', 'Owner and repo required'); return; }
+            setLoading('qa-loading', true);
+            const data = await postJSON('/api/collateral/financeability', { owner, repo });
+            setLoading('qa-loading', false);
+            showOutput('qa-output', data);
+            if (data.financeability_report) {
+                updateScoreRing(data.financeability_report.overall_score || 0);
+            }
+        }
+
+        // Full analyze
+        async function runFullAnalyze() {
+            const owner = document.getElementById('analyze-owner').value;
+            const repo = document.getElementById('analyze-repo').value;
+            if (!owner || !repo) { showModal('Error', 'Owner and repo required'); return; }
+            setLoading('analyze-loading', true);
+            const data = await postJSON('/api/collateral/analyze', { owner, repo });
+            setLoading('analyze-loading', false);
+            showOutput('analyze-output', data);
+        }
+
+        // Portfolio
+        async function runPortfolioAudit() {
+            const raw = document.getElementById('portfolio-repos').value.trim();
+            if (!raw) { showModal('Error', 'Enter at least one repo'); return; }
+            const repos = raw.split('\n').map(l => {
+                const p = l.trim().split('/');
+                return p.length === 2 ? { owner: p[0], repo: p[1] } : null;
+            }).filter(Boolean);
+            if (repos.length === 0) { showModal('Error', 'Format: owner/repo'); return; }
+            setLoading('portfolio-loading', true);
+            const data = await postJSON('/api/collateral/portfolio_audit', { repos });
+            setLoading('portfolio-loading', false);
+            showOutput('portfolio-output', data);
+        }
+
+        async function runBalanceSheet() {
+            const raw = document.getElementById('portfolio-repos').value.trim();
+            if (!raw) { showModal('Error', 'Enter at least one repo'); return; }
+            const repos = raw.split('\n').map(l => {
+                const p = l.trim().split('/');
+                return p.length === 2 ? { owner: p[0], repo: p[1] } : null;
+            }).filter(Boolean);
+            if (repos.length === 0) { showModal('Error', 'Format: owner/repo'); return; }
+            setLoading('portfolio-loading', true);
+            const data = await postJSON('/api/collateral/balance_sheet', { repos });
+            setLoading('portfolio-loading', false);
+            showOutput('portfolio-output', data);
+        }
+
+        // Agent audit
+        async function runAgentAudit() {
+            const agent_name = document.getElementById('agent-name').value;
+            const directory = document.getElementById('agent-directory').value;
+            if (!directory) { showModal('Error', 'Directory path required'); return; }
+            setLoading('agent-loading', true);
+            const data = await postJSON('/api/collateral/agent_audit', { agent_name, directory });
+            setLoading('agent-loading', false);
+            showOutput('agent-output', data);
+        }
+
+        // Visualization updates
+        function updateScoreRing(score) {
+            const num = document.getElementById('score-num');
+            const progress = document.getElementById('score-progress');
+            num.textContent = score;
+            const offset = 377 - (377 * score / 100);
+            progress.style.strokeDashoffset = offset;
+            if (score >= 65) progress.style.stroke = 'var(--green)';
+            else if (score >= 50) progress.style.stroke = 'var(--gold)';
+            else if (score >= 35) progress.style.stroke = 'var(--orange)';
+            else progress.style.stroke = 'var(--red)';
+        }
+
+        function updateValuationBars(val) {
+            const max = Math.max(
+                parseFloat(val.replacement_cost_usd || 0),
+                parseFloat(val.as_is_sale_value_usd || 0),
+                parseFloat(val.collateral_support_value_usd || 0),
+                parseFloat(val.liquidation_value_usd || 0),
+                1
+            );
+            const set = (id, valId, amt) => {
+                const pct = Math.min(100, (parseFloat(amt || 0) / max) * 100);
+                document.getElementById(id).style.width = pct + '%';
+                document.getElementById(valId).textContent = '$' + (amt || '0');
+            };
+            set('bar-replacement', 'val-replacement', val.replacement_cost_usd);
+            set('bar-as-is', 'val-as-is', val.as_is_sale_value_usd);
+            set('bar-collateral', 'val-collateral', val.collateral_support_value_usd);
+            set('bar-liquidation', 'val-liquidation', val.liquidation_value_usd);
+        }
+    </script>
+</body>
+</html>

@@ -174,6 +174,18 @@ def index():
     return render_template('landing.html')
 
 
+@app.route('/2040')
+def landing_2040():
+    """Serve the futuristic 2040 landing page."""
+    return render_template('landing_2040.html')
+
+
+@app.route('/dashboard')
+def collateral_dashboard():
+    """Serve the CollateralOps asset desk dashboard."""
+    return render_template('collateral_dashboard.html')
+
+
 @app.route('/login')
 def login():
     """Serve login page."""
