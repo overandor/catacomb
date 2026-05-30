@@ -194,6 +194,11 @@ def ledger_page():
     """Institutional Audit Ledger - Trust layer."""
     return render_template('ledger.html')
 
+@app.route('/swipe')
+def swipe_page():
+    """Premium Asset Discovery - Swipe interface."""
+    return render_template('swipe.html')
+
 @app.route('/api/radar/summary')
 def radar_summary_api():
     """Get radar summary statistics."""

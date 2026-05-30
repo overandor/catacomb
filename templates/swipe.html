@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb Swipe - Premium Asset Discovery</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        .swipe-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .swipe-card {
+            background: var(--volcanic-graphite);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .swipe-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gold-gradient);
+            opacity: 0.5;
+        }
+        
+        .swipe-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 215, 0, 0.4);
+            box-shadow: var(--card-glow);
+        }
+        
+        .swipe-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .swipe-btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .swipe-btn-left {
+            background: rgba(220, 20, 60, 0.2);
+            color: var(--crimson-risk);
+            border: 1px solid rgba(220, 20, 60, 0.3);
+        }
+        
+        .swipe-btn-left:hover {
+            background: rgba(220, 20, 60, 0.3);
+            box-shadow: var(--crimson-shadow);
+        }
+        
+        .swipe-btn-right {
+            background: rgba(255, 107, 53, 0.2);
+            color: var(--forged-orange);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+        }
+        
+        .swipe-btn-right:hover {
+            background: rgba(255, 107, 53, 0.3);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+        }
+        
+        .swipe-btn-up {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--molten-gold);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .swipe-btn-up:hover {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: var(--gold-glow);
+        }
+        
+        .swipe-btn-down {
+            background: rgba(138, 138, 149, 0.2);
+            color: var(--light-stone);
+            border: 1px solid rgba(138, 138, 149, 0.3);
+        }
+        
+        .swipe-btn-down:hover {
+            background: rgba(138, 138, 149, 0.3);
+        }
+        
+        .keyboard-shortcuts {
+            text-align: center;
+            padding: 20px;
+            background: rgba(26, 26, 36, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .keyboard-shortcuts h4 {
+            font-size: 12px;
+            color: var(--warm-stone);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--light-stone);
+        }
+        
+        .shortcut-key {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+        
+        .portfolio-queue {
+            margin-top: 32px;
+        }
+        
+        .portfolio-item {
+            background: rgba(26, 26, 36, 0.5);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .portfolio-item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--light-stone);
+        }
+        
+        .portfolio-item-ev {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--molten-gold);
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/ledger">Ledger</a>
+            <a href="/swipe" class="active">Swipe</a>
+            <a href="/search">Search</a>
+            <a href="/live">Live</a>
+        </nav>
+    </div>
+
+    <div class="hero">
+        <h1 class="hero-title">Asset Discovery</h1>
+        <p class="hero-subtitle">Premium interface for discovering hidden software assets.</p>
+    </div>
+
+    <div class="swipe-container">
+        <div class="swipe-actions">
+            <button class="swipe-btn swipe-btn-left" onclick="swipeLeft()">← Ignore</button>
+            <button class="swipe-btn swipe-btn-up" onclick="swipeUp()">↑ Mine Evidence</button>
+            <button class="swipe-btn swipe-btn-right" onclick="swipeRight()">Save Opportunity →</button>
+            <button class="swipe-btn swipe-btn-down" onclick="swipeDown()">↓ Add to Portfolio</button>
+        </div>
+
+        <div class="swipe-card high-opportunity">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">dependency-graph-analyzer</div>
+                    <div class="radar-asset-source">GitHub Repo</div>
+                </div>
+                <div class="radar-ev-badge">2.45</div>
+            </div>
+            
+            <span class="label label-undervalued">Undervalued</span>
+            <span class="label label-hidden">Hidden Infrastructure</span>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Innovation Alpha:</strong> +45.2</div>
+                <div class="radar-metric"><strong>Value Per Day:</strong> 2.45</div>
+                <div class="radar-metric"><strong>Effort Required:</strong> 21 days</div>
+                <div class="radar-metric"><strong>Transitive Dependencies:</strong> 847</div>
+                <div class="radar-metric"><strong>Bus Factor:</strong> 1</div>
+                <div class="radar-metric"><strong>Evidence Strength:</strong> 85%</div>
+            </div>
+            
+            <ul class="radar-evidence">
+                <li>Hidden infrastructure detected</li>
+                <li>Under-recognized dependency chain</li>
+                <li>Single maintainer creates opportunity</li>
+                <li>High ecosystem leverage through transitive deps</li>
+            </ul>
+            
+            <div class="radar-confidence">
+                <div class="radar-confidence-fill" style="width: 85%"></div>
+            </div>
+        </div>
+
+        <div class="keyboard-shortcuts">
+            <h4>Keyboard Shortcuts</h4>
+            <div class="shortcut-item">
+                <span><span class="shortcut-key">←</span> Ignore</span>
+                <span><span class="shortcut-key">→</span> Save Opportunity</span>
+                <span><span class="shortcut-key">↑</span> Mine Evidence</span>
+                <span><span class="shortcut-key">↓</span> Add to Portfolio</span>
+            </div>
+        </div>
+
+        <div class="portfolio-queue">
+            <h4 style="font-size: 14px; color: var(--warm-stone); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.1em;">Portfolio Queue</h4>
+            <div class="portfolio-item">
+                <div class="portfolio-item-name">rust-telemetry-daemon</div>
+                <div class="portfolio-item-ev">1.87</div>
+            </div>
+            <div class="portfolio-item">
+                <div class="portfolio-item-name">hidden-asset-finder</div>
+                <div class="portfolio-item-ev">1.92</div>
+            </div>
+            <div class="portfolio-item">
+                <div class="portfolio-item-name">build-system-optimizer</div>
+                <div class="portfolio-item-ev">1.34</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+function swipeLeft() {
+    alert('Asset ignored');
+}
+
+function swipeRight() {
+    alert('Opportunity saved');
+}
+
+function swipeUp() {
+    alert('Mining evidence...');
+}
+
+function swipeDown() {
+    alert('Added to portfolio queue');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+        swipeLeft();
+    } else if (e.key === 'ArrowRight') {
+        swipeRight();
+    } else if (e.key === 'ArrowUp') {
+        swipeUp();
+    } else if (e.key === 'ArrowDown') {
+        swipeDown();
+    }
+});
+</script>
+</body>
+</html>
