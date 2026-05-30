@@ -2,79 +2,138 @@
 
 **Innovation Allocation Engine**
 
-Catacomb finds under-recognized software assets and ranks the highest-value engineering interventions to unlock them.
+Catacomb discovers under-recognized software assets and ranks the highest-value engineering interventions to unlock them.
+
+## Core Thesis
+
+**Repository discovery is not the product. Innovation allocation is the product.**
+
+Catacomb does not answer "Which repo is valuable?" It answers:
+
+> "Given 30 engineering days, where should effort be deployed to create the most future value?"
 
 ## What It Does
 
 Catacomb is an intervention intelligence system that:
 
-1. **Discovers hidden infrastructure** - Identifies critical but under-recognized software assets through ecosystem analysis
-2. **Ranks interventions by value** - Calculates Expected Value Created Per Engineering Day, not popularity
-3. **Tracks outcomes** - Closed-loop intervention lifecycle with before/after metrics and verification
-4. **Learns from history** - Mines GitHub PRs for verified intervention outcomes to improve predictions
+1. **Discovers assets** - Identifies software assets across types (repos, models, datasets, APIs, papers, agents, prompts, workflows)
+2. **Calculates Innovation Alpha** - Measures mispricing: `Alpha = Expected Future Value - Current Recognition`
+3. **Ranks interventions** - Calculates Expected Value Created Per Engineering Day
+4. **Tracks outcomes** - Closed-loop intervention lifecycle with before/after metrics and verification
+5. **Builds ground truth** - Accumulates verified intervention-outcome pairs as the defensible moat
 
 ## Key Product: Catacomb Radar
 
-The Radar tab shows hidden infrastructure ranked by **Expected Value Created Per Engineering Day**. This answers:
+The Radar tab shows assets ranked by **Expected Value Created Per Engineering Day**.
 
-> "Given 30 engineering days, where should effort be deployed to create the most future value?"
+## Architecture Evolution
 
-## Architecture
-
-### Three-Tier Universe Model
-
-- **Discovery Universe**: All known assets (millions)
-- **Candidate Universe**: Assets passing minimum thresholds (not archived, valid license, buildable)
-- **Alpha Universe**: High intervention potential (low recognition, strong foundations, ecosystem leverage)
-
-### Value Delta Calculation
-
+### Phase 1: Repository Discovery
 ```
-Value Delta = Achievable State - Current State
-
-Achievable State = Current State × Intervention Multipliers
-
-Intervention Multipliers:
-- Documentation improvement: 1.3×
-- Packaging completion: 1.5×
-- CI addition: 1.4×
-- API stabilization: 1.6×
-- Dependency modernization: 1.2×
-- Ecosystem integration: 2.0×
+GitHub Scanner → Repo Ranking → Opportunity Score
 ```
 
-### Ecosystem KPIs
+### Phase 2: Intervention Focus
+```
+Repo → Intervention → Expected Outcome
+```
 
-- Transitive dependency count
-- Indirect ecosystem reach
-- Maintainer bus factor
-- Contributor concentration
-- Unresolved security backlog
-- Ecosystem replacement difficulty
-- Downstream revenue exposure
-- Migration cost
+### Phase 3: Closed-Loop
+```
+Asset → Intervention → Outcome → Verified Result
+```
 
-### Closed-Loop Intervention System
+### Phase 4: Portfolio Allocation
+```
+Developer → Asset Portfolio → Future States → Capital Allocation
+```
 
-**Outcome Ledger v2** tracks:
-- Before state (metrics before intervention)
-- Predicted outcome (expected value, probability, risk)
-- After state (metrics after intervention)
-- Verification status (verified by GitHub PR link)
-- Prediction accuracy (for model training)
+### Phase 5: Innovation Market
+```
+Innovation Market (current target)
+```
 
-**Intervention Types:**
-- Documentation
-- Build system
-- Feature expansion
-- Performance
-- Migration
-- Packaging
-- API
-- SaaS
-- AI integration
-- Security
-- Dependency cleanup
+## Asset Abstraction
+
+Catacomb treats all software assets uniformly:
+
+- **Repository** - GitHub, GitLab, Bitbucket
+- **Model** - Hugging Face, PyTorch Hub, TensorFlow Hub
+- **Dataset** - Kaggle, Hugging Face Datasets
+- **API** - OpenAPI, GraphQL, REST
+- **Research Paper** - arXiv, IEEE, ACM
+- **Agent** - LangChain, AutoGPT, BabyAGI
+- **Prompt Corpus** - PromptBase, FlowGPT
+- **Workflow** - n8n, Airflow, Temporal
+
+All assets share:
+- **Asset Genome** - Structural metadata, dependencies, community signals
+- **Current State** - Recognition, value, health indicators
+- **Future States** - Potential interventions, achievable value
+- **Innovation Alpha** - Mispricing opportunity
+- **Intervention History** - Past interventions and outcomes
+
+## Innovation Alpha
+
+```
+Innovation Alpha = Expected Future Value - Current Recognition
+```
+
+**Positive alpha** = undervalued (opportunity)
+**Zero alpha** = fairly valued
+**Negative alpha** = overvalued (avoid)
+
+Example:
+```
+Expected Future Value = 80
+Recognition = 90
+Alpha = -10 (already discovered, avoid)
+
+Expected Future Value = 80
+Recognition = 15
+Alpha = +65 (hidden gem, opportunity)
+```
+
+## Ground Truth Moat
+
+The defensible dataset is not:
+- GitHub scanning (can be copied)
+- LLM reasoning (can be copied)
+- Repo valuation (can be copied)
+- Opportunity scores (can be copied)
+
+The defensible dataset is:
+- **10,000 verified intervention-outcome pairs**
+
+This ground truth cannot be copied quickly and enables:
+- Intervention prediction
+- Value delta estimation
+- Success probability modeling
+- Risk assessment
+
+## Future Architecture
+
+```
+DollarFS Discover (Private Assets)
+↓
+Asset Genome
+↓
+Catacomb Alpha Engine
+↓
+Intervention Forecast
+↓
+Outcome Ledger
+↓
+Evidence Packet
+↓
+BitNet Proof
+↓
+Software Asset Registry
+↓
+Price Discovery
+```
+
+This is the first version of a genuine software-capital market.
 
 ## Usage
 
@@ -94,19 +153,30 @@ python github_intervention_miner.py
 
 ## API Endpoints
 
-- `GET /api/discover/quality` - High-value repositories
-- `GET /api/discover/trending` - Fastest acceleration
+- `GET /api/radar` - Assets ranked by value per engineering day
 - `GET /api/discover/promising` - Alpha Universe (undervalued assets only)
-- `GET /api/radar` - Hidden infrastructure ranked by value per engineering day
-- `POST /api/database/populate` - Batch populate database with appraisals
+- `GET /api/ledger` - Intervention ledger with verification status
+- `GET /api/metrics` - System metrics (verified interventions, engineering alpha, etc.)
+
+## Roadmap
+
+1. **Asset Abstraction** - Unified interface for all asset types
+2. **Asset Genome** - Structural metadata and dependency graph
+3. **Innovation Alpha Discovery** - Mispricing detection across asset types
+4. **Outcome Ledger Growth** - Scale to 10,000 verified intervention-outcome pairs
+5. **Intervention Prediction** - ML model from verified outcomes
+6. **Ecosystem Graph** - Asset relationship discovery
+7. **DollarFS Integration** - Private asset discovery
+8. **Asset Embeddings** - Similarity search across asset types
+9. **Evidence Packets** - BitNet proof integration
+10. **Software Asset Registry** - Price discovery
 
 ## Product Positioning
 
 Catacomb is not a repository explorer. It is an **innovation allocation engine** that:
 
-- Values **actions on repos** more than repos themselves
-- Ranks by **Expected Value Created Per Engineering Day**, not stars or forks
+- Values **actions on assets** more than assets themselves
+- Ranks by **Expected Value Created Per Engineering Day**, not popularity
 - Prioritizes **verified intervention outcomes** over dataset size
-- Focuses on **hidden infrastructure** that nobody is looking at
-
-The goal is to consistently answer: *"Where should engineering effort be deployed to create the most future value?"*
+- Measures **mispricing** (Innovation Alpha), not recognition
+- Focuses on **where engineering effort creates the most future value**
