@@ -233,11 +233,12 @@ def analyze_topic():
 
 @app.route('/api/analyze/user', methods=['POST'])
 def analyze_user():
-    """Analyze repositories by user."""
+    """Analyze repositories by user with pagination support."""
     data = request.get_json()
     username = data.get('username')
     limit = data.get('limit', 10)
-    logger.info(f"User analysis request: {username} (limit: {limit})")
+    page = data.get('page', 1)
+    logger.info(f"User analysis request: {username} (limit: {limit}, page: {page})")
     
     try:
         if not username:
@@ -247,7 +248,7 @@ def analyze_user():
         orch = get_orchestrator()
         results = orch.analyze_user(username, limit)
         logger.info(f"User analysis success: {username} - {len(results)} repos")
-        return jsonify({"results": results})
+        return jsonify({"results": results, "page": page, "total": len(results)})
     except Exception as e:
         logger.error(f"User analysis failed: {username} - {str(e)}")
         return jsonify({"error": str(e)}), 500

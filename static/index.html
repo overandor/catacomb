@@ -15,7 +15,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback } = React;
 
         // Header Component
         function Header({ currentView, setCurrentView }) {
@@ -881,10 +881,49 @@
             const [results, setResults] = useState([]);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
+            const [suggestions, setSuggestions] = useState([]);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            const [recommendedUsers, setRecommendedUsers] = useState([
+                { username: 'torvalds', repos: 3, stars: '150K+', description: 'Linux kernel creator, high-impact developer' },
+                { username: 'gaearon', repos: 12, stars: '200K+', description: 'React core team, JavaScript ecosystem leader' },
+                { username: 'sindresorhus', repos: 1000, stars: '500K+', description: 'Prolific open source maintainer, npm ecosystem' },
+                { username: 'd3', repos: 8, stars: '100K+', description: 'Data visualization library, high utility' },
+                { username: 'tensorflow', repos: 15, stars: '180K+', description: 'Machine learning framework, AI infrastructure' },
+            ]);
+            const [autoDiscovery, setAutoDiscovery] = useState({ active: false, nextSearch: null, currentUser: null });
+            const [userPages, setUserPages] = useState({});
+
+            // Auto-discovery timer (every 3 minutes)
+            useEffect(() => {
+                if (!autoDiscovery.active) return;
+                const interval = setInterval(() => {
+                    if (autoDiscovery.currentUser) {
+                        discoverUser(autoDiscovery.currentUser);
+                    }
+                }, 180000); // 3 minutes
+                return () => clearInterval(interval);
+            }, [autoDiscovery]);
+
+            // Presearch suggestions
+            useEffect(() => {
+                if (query.length < 2) {
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                    return;
+                }
+                if (searchType === 'user') {
+                    const filtered = recommendedUsers.filter(u => 
+                        u.username.toLowerCase().includes(query.toLowerCase())
+                    ).slice(0, 5);
+                    setSuggestions(filtered);
+                    setShowSuggestions(filtered.length > 0);
+                }
+            }, [query, searchType]);
 
             async function handleSearch(e) {
                 e.preventDefault();
                 if (!query.trim()) return;
+                setShowSuggestions(false);
                 setLoading(true); setError(null); setResults([]);
                 try {
                     let url, body, method = 'GET';
@@ -916,22 +955,144 @@
                 finally { setLoading(false); }
             }
 
+            async function discoverUser(username) {
+                setLoading(true);
+                try {
+                    // Fetch all pages for complete data exposure
+                    let allResults = [];
+                    let page = 1;
+                    let hasMore = true;
+                    
+                    while (hasMore) {
+                        const res = await fetch('/api/analyze/user', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, limit: 50, page })
+                        });
+                        const data = await res.json();
+                        
+                        if (data.results && data.results.length > 0) {
+                            allResults = [...allResults, ...data.results];
+                            page++;
+                            // Stop if we got fewer results than limit (last page)
+                            hasMore = data.results.length === 50;
+                        } else {
+                            hasMore = false;
+                        }
+                    }
+                    
+                    if (allResults.length > 0) {
+                        setUserPages(prev => ({ ...prev, [username]: allResults }));
+                        setResults(allResults);
+                    }
+                } catch (e) { console.error('Discovery error:', e); }
+                finally { setLoading(false); }
+            }
+
+            function startAutoDiscovery(username) {
+                setAutoDiscovery({
+                    active: true,
+                    nextSearch: new Date(Date.now() + 180000),
+                    currentUser: username
+                });
+                discoverUser(username);
+            }
+
+            function stopAutoDiscovery() {
+                setAutoDiscovery({ active: false, nextSearch: null, currentUser: null });
+            }
+
+            function selectSuggestion(username) {
+                setQuery(username);
+                setShowSuggestions(false);
+                handleSearch({ preventDefault: () => {} });
+            }
+
             return (
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <h2 className="text-3xl font-bold mb-2 text-orange">Search</h2>
                     <p className="text-stone mb-6">Global search across repositories, developers, packages, and interventions.</p>
 
-                    <form onSubmit={handleSearch} className="card-premium p-4 mb-6">
+                    {/* Recommended Users */}
+                    <div className="card-premium p-4 mb-6">
+                        <h3 className="text-sm font-medium text-orange mb-3">Recommended Developers</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {recommendedUsers.map((u, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => { setSearchType('user'); setQuery(u.username); }}
+                                    className="px-3 py-2 bg-graphite border border-orange/20 rounded-lg text-xs hover:border-orange/40 transition-all text-left"
+                                >
+                                    <div className="font-medium text-warm-white">{u.username}</div>
+                                    <div className="text-stone text-[10px]">{u.repos} repos • {u.stars} stars</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Search Form */}
+                    <form onSubmit={handleSearch} className="card-premium p-4 mb-6 relative">
                         <div className="flex flex-wrap gap-3">
                             <select className="bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" value={searchType} onChange={e=>setSearchType(e.target.value)}>
                                 <option value="repo">Repository (owner/repo)</option>
                                 <option value="topic">Topic</option>
                                 <option value="user">User</option>
                             </select>
-                            <input className="flex-1 min-w-[200px] bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" value={query} onChange={e=>setQuery(e.target.value)} placeholder={searchType==='repo'?'owner/repo':searchType==='topic'?'machine-learning':'github-username'} />
+                            <div className="flex-1 min-w-[200px] relative">
+                                <input 
+                                    className="w-full bg-graphite border border-orange/20 rounded-lg px-4 py-3 text-warm-white text-sm" 
+                                    value={query} 
+                                    onChange={e=>setQuery(e.target.value)} 
+                                    onFocus={()=>setShowSuggestions(true)}
+                                    onBlur={()=>setTimeout(()=>setShowSuggestions(false), 200)}
+                                    placeholder={searchType==='repo'?'owner/repo':searchType==='topic'?'machine-learning':'github-username'} 
+                                />
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-graphite border border-orange/20 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                                        {suggestions.map((s, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => selectSuggestion(s.username)}
+                                                className="px-4 py-3 hover:bg-orange/10 cursor-pointer border-b border-orange/10 last:border-0"
+                                            >
+                                                <div className="font-medium text-warm-white">{s.username}</div>
+                                                <div className="text-stone text-xs">{s.description}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <button type="submit" className="px-6 py-3 bg-orange/20 border border-orange/30 text-orange font-medium rounded-lg hover:bg-orange/30 transition-all" disabled={loading}>{loading?'Searching...':'Search'}</button>
                         </div>
                     </form>
+
+                    {/* Auto-Discovery Controls */}
+                    {searchType === 'user' && query && (
+                        <div className="card-premium p-4 mb-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-orange">Auto-Discovery Mode</h3>
+                                    <p className="text-stone text-xs mt-1">Automatically search for new data every 3 minutes</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {autoDiscovery.active && (
+                                        <span className="text-xs text-stone">
+                                            Next search: {autoDiscovery.nextSearch?.toLocaleTimeString()}
+                                        </span>
+                                    )}
+                                    {autoDiscovery.active ? (
+                                        <button onClick={stopAutoDiscovery} className="px-4 py-2 bg-crimson/20 border border-crimson/30 text-crimson text-sm rounded-lg hover:bg-crimson/30 transition-all">
+                                            Stop Auto-Discovery
+                                        </button>
+                                    ) : (
+                                        <button onClick={() => startAutoDiscovery(query)} className="px-4 py-2 bg-orange/20 border border-orange/30 text-orange text-sm rounded-lg hover:bg-orange/30 transition-all">
+                                            Start Auto-Discovery
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {error && <div className="card-premium p-4 mb-4 border-l-4 border-crimson"><p className="text-crimson text-sm">{error}</p></div>}
 
