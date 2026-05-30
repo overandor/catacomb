@@ -347,6 +347,99 @@ h3 {
     transition: width 0.3s ease;
 }
 
+/* Explainability Section */
+.explainability-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(26, 26, 36, 0.5);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.explainability-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--warm-stone);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.explainability-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.explainability-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.explainability-label {
+    font-size: 11px;
+    color: var(--warm-stone);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.explainability-value {
+    font-size: 12px;
+    color: var(--light-stone);
+    line-height: 1.4;
+}
+
+.confidence-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.confidence-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--warm-stone);
+}
+
+.confidence-item span:last-child {
+    color: var(--light-stone);
+    font-family: var(--font-mono);
+}
+
+.risk-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+
+.risk-low {
+    background: rgba(255, 215, 0, 0.1);
+    color: var(--molten-gold);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.risk-medium {
+    background: rgba(255, 107, 53, 0.1);
+    color: var(--forged-orange);
+    border: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.risk-high {
+    background: rgba(220, 20, 60, 0.1);
+    color: var(--crimson-risk);
+    border: 1px solid rgba(220, 20, 60, 0.2);
+}
+
 /* Labels */
 .label {
     display: inline-block;
