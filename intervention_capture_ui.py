@@ -7,17 +7,37 @@ from github_intervention_miner import GitHubInterventionMiner, seed_mined_interv
 from datetime import datetime
 import json
 import threading
+import os
 
 app = Flask(__name__)
-app.secret_key = 'catacomb-intervention-capture'
+app.secret_key = os.environ.get('SECRET_KEY', 'catacomb-intervention-capture')
 
-# Initialize systems
-ledger = OutcomeLedger("outcome_ledger.db")
+# Initialize systems with environment-aware database path
+# Use /tmp for Vercel serverless writable storage
+if os.environ.get('VERCEL'):
+    db_path = '/tmp/outcome_ledger.db'
+else:
+    db_path = os.environ.get('DATABASE_PATH', 'outcome_ledger.db')
+ledger = OutcomeLedger(db_path)
 elo_system = InnovationElo()
 transformation_tracker = TransformationTracker()
 
 # Global variable for mining status
 mining_status = {"in_progress": False, "progress": 0, "total": 0, "message": ""}
+
+# Vercel serverless handler
+def handler(event, context):
+    # Convert Vercel event to WSGI environ
+    from werkzeug.serving import WSGIRequestHandler
+    
+    # For Vercel, we need to return a proper response
+    # This is a simplified handler - in production use vercel-wsgi
+    return app(event, context)
+
+# Ensure app is WSGI-compatible
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 
 @app.route('/')

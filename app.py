@@ -12,6 +12,7 @@ from orchestrator import CatacombOrchestrator
 from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
 from repo_valuation import RepoValuation
 from abandoned_repo_kpis import AbandonedRepoKPIs
+from repo_dataset import get_expanded_repos
 
 # Configure logging
 logging.basicConfig(
@@ -289,133 +290,8 @@ def discover_quality_repos():
         return jsonify(discovery_cache[cache_key]["data"])
     
     try:
-        # Predefined list of under-the-radar quality repos to analyze
-        # These are smaller, less famous but high-quality projects across categories
-        quality_repos = [
-            # Terminal & CLI Tools
-            ("starship", "starship"),  # Rust shell prompt
-            ("atuinsh", "atuin"),  # Shell history
-            ("zellij-org", "zellij"),  # Terminal multiplexer
-            ("helix-editor", "helix"),  # Modal text editor
-            ("eza-community", "eza"),  # Modern ls replacement
-            ("fd-dev", "fd"),  # Find alternative
-            ("sharkdp", "bat"),  # Cat alternative
-            ("sharkdp", "ripgrep"),  # Grep alternative
-            ("dandavison", "delta"),  # Git diff viewer
-            ("junegunn", "fzf"),  # Fuzzy finder
-            ("sxyazi", "yazi"),  # Terminal file manager
-            ("nushell", "nushell"),  # Modern shell
-            ("kovidgoyal", "kitty"),  # Terminal emulator
-            ("alacritty", "alacritty"),  # Terminal emulator
-            ("wez", "wezterm"),  # Terminal emulator
-            ("charmbracelet", "gum"),  # Shell script UI
-            ("charmbracelet", "lip Gloss"),  # TUI library
-            ("charmbracelet", "bubbletea"),  # TUI framework
-            ("c-batastrophe", "broot"),  # Tree viewer
-            ("canopas", "tldr"),  # Simplified man pages
-            ("o2sh", "onefetch"),  # Git info tool
-            ("ogham", "exa"),  # Modern ls (deprecated but popular)
-            
-            # Build Tools & Package Managers
-            ("golang", "go"),  # Go language
-            ("rust-lang", "cargo"),  # Rust package manager
-            ("pnpm", "pnpm"),  # Fast npm alternative
-            ("yarnpkg", "yarn"),  # Package manager
-            ("bun", "bun"),  # JS runtime
-            ("denoland", "deno"),  # JS runtime
-            ("sveltejs", "kit"),  # Svelte build tool
-            ("vitejs", "vite"),  # Build tool
-            ("swc-project", "swc"),  # JS/TS compiler
-            ("esbuild", "esbuild"),  # JS bundler
-            ("rome", "rome"),  # JS toolchain
-            ("biomejs", "biome"),  # JS linter/formatter
-            ("ruff-lang", "ruff"),  # Python linter
-            ("astral-sh", "uv"),  # Python package manager
-            ("mitsuhiko", "rye"),  # Python toolchain
-            ("poetry", "poetry"),  # Python dependency manager
-            ("pypa", "pip"),  # Python installer
-            
-            # Web Frameworks (Alternatives to React/Next.js)
-            ("solidjs", "solid"),  # Reactive UI
-            ("sveltejs", "svelte"),  # Component framework
-            ("htmx", "htmx"),  # HTML extension
-            ("hotwired", "turbo"),  # Rails framework
-            ("phoenixframework", "phoenix"),  # Elixir framework
-            ("lucacasonato", "remix"),  # React framework
-            ("builderio", "qwik"),  # Resumable framework
-            ("marko-js", "marko"),  # UI framework
-            ("astro", "astro"),  # Web framework
-            ("fresh", "fresh"),  # Deno framework
-            ("elysiajs", "elysia"),  # Bun framework
-            ("hono", "hono"),  # Web framework
-            ("lit", "lit"),  # Web components
-            ("fastify", "fastify"),  # Node framework
-            ("poliastro", "poliastro"),  # Python web framework
-            
-            # Database Tools & ORMs
-            ("prisma", "prisma"),  # TypeScript ORM
-            ("drizzle-team", "drizzle-orm"),  # SQL ORM
-            ("supabase", "supabase"),  # Backend platform
-            ("planetscale", "planetscale"),  # Database platform
-            ("xata", "xata"),  # Serverless database
-            ("neondatabase", "neon"),  # Postgres platform
-            ("turso", "turso"),  # SQLite platform
-            ("libsql", "libsql"),  # SQLite fork
-            ("duckdb", "duckdb"),  # Analytical database
-            ("clickhouse", "clickhouse"),  # Columnar database
-            ("timescale", "timescaledb"),  # Postgres extension
-            ("pgvector", "pgvector"),  # Vector extension
-            ("qdrant", "qdrant"),  # Vector database
-            ("weaviate", "weaviate"),  # Vector database
-            ("milvus-io", "milvus"),  # Vector database
-            ("sequelize", "sequelize"),  # Node ORM
-            ("typeorm", "typeorm"),  # TypeScript ORM
-            ("sqlalchemy", "sqlalchemy"),  # Python ORM
-            
-            # DevOps & Infrastructure
-            ("hashicorp", "terraform"),  # IaC tool
-            ("hashicorp", "packer"),  # Image builder
-            ("ansible", "ansible"),  # Automation
-            ("puppetlabs", "puppet"),  # Configuration
-            ("chef", "chef"),  # Configuration
-            ("saltstack", "salt"),  # Automation
-            ("grafana", "grafana"),  # Monitoring
-            ("prometheus", "prometheus"),  # Monitoring
-            ("loki", "loki"),  # Logging
-            ("temporalio", "temporal"),  # Workflow engine
-            ("dapr", "dapr"),  # Microservices runtime
-            ("open-telemetry", "opentelemetry"),  # Observability
-            ("envoyproxy", "envoy"),  # Service proxy
-            ("kubernetes", "kubernetes"),  # Container orchestration
-            ("lima", "lima"),  # Linux VMs on Mac
-            ("colima", "colima"),  # Container runtime
-            ("rancher", "rancher"),  # K8s management
-            ("portainer", "portainer"),  # Container UI
-            
-            # Testing & Quality
-            ("jestjs", "jest"),  # Testing framework
-            ("vitest-dev", "vitest"),  # Testing framework
-            ("mswjs", "msw"),  # API mocking
-            ("playwright", "playwright"),  # E2E testing
-            ("cypress", "cypress"),  # E2E testing
-            ("testing-library", "testing-library"),  # Testing utilities
-            ("k6io", "k6"),  # Load testing
-            ("gatling", "gatling"),  # Load testing
-            ("locustio", "locust"),  # Load testing
-            ("sonarsource", "sonarqube"),  # Code quality
-            ("deepsource", "deepsource"),  # Code analysis
-            ("codecov", "codecov"),  # Code coverage
-            ("coveralls", "coveralls"),  # Code coverage
-            
-            # Security
-            ("aquasecurity", "trivy"),  # Security scanner
-            ("anchore", "grype"),  # Vulnerability scanner
-            ("snyk", "snyk"),  # Security platform
-            ("OWASP", "dependency-check"),  # Dependency scanner
-            ("zmap", "zmap"),  # Network scanner
-            ("microsoft", "gpt"),  # AI security
-            ("trailofbits", "audit"),  # Security audit
-        ]
+        # Use expanded dataset of 10,000 repos for database population
+        quality_repos = get_expanded_repos()
         
         orch = get_orchestrator()
         results = []
@@ -474,133 +350,8 @@ def discover_trending_repos():
         return jsonify(discovery_cache[cache_key]["data"])
     
     try:
-        # Predefined list of under-the-radar repos for trending analysis
-        # Same expanded dataset as quality for consistency
-        trending_repos = [
-            # Terminal & CLI Tools
-            ("starship", "starship"),  # Rust shell prompt
-            ("atuinsh", "atuin"),  # Shell history
-            ("zellij-org", "zellij"),  # Terminal multiplexer
-            ("helix-editor", "helix"),  # Modal text editor
-            ("eza-community", "eza"),  # Modern ls replacement
-            ("fd-dev", "fd"),  # Find alternative
-            ("sharkdp", "bat"),  # Cat alternative
-            ("sharkdp", "ripgrep"),  # Grep alternative
-            ("dandavison", "delta"),  # Git diff viewer
-            ("junegunn", "fzf"),  # Fuzzy finder
-            ("sxyazi", "yazi"),  # Terminal file manager
-            ("nushell", "nushell"),  # Modern shell
-            ("kovidgoyal", "kitty"),  # Terminal emulator
-            ("alacritty", "alacritty"),  # Terminal emulator
-            ("wez", "wezterm"),  # Terminal emulator
-            ("charmbracelet", "gum"),  # Shell script UI
-            ("charmbracelet", "lip Gloss"),  # TUI library
-            ("charmbracelet", "bubbletea"),  # TUI framework
-            ("c-batastrophe", "broot"),  # Tree viewer
-            ("canopas", "tldr"),  # Simplified man pages
-            ("o2sh", "onefetch"),  # Git info tool
-            ("ogham", "exa"),  # Modern ls (deprecated but popular)
-            
-            # Build Tools & Package Managers
-            ("golang", "go"),  # Go language
-            ("rust-lang", "cargo"),  # Rust package manager
-            ("pnpm", "pnpm"),  # Fast npm alternative
-            ("yarnpkg", "yarn"),  # Package manager
-            ("bun", "bun"),  # JS runtime
-            ("denoland", "deno"),  # JS runtime
-            ("sveltejs", "kit"),  # Svelte build tool
-            ("vitejs", "vite"),  # Build tool
-            ("swc-project", "swc"),  # JS/TS compiler
-            ("esbuild", "esbuild"),  # JS bundler
-            ("rome", "rome"),  # JS toolchain
-            ("biomejs", "biome"),  # JS linter/formatter
-            ("ruff-lang", "ruff"),  # Python linter
-            ("astral-sh", "uv"),  # Python package manager
-            ("mitsuhiko", "rye"),  # Python toolchain
-            ("poetry", "poetry"),  # Python dependency manager
-            ("pypa", "pip"),  # Python installer
-            
-            # Web Frameworks (Alternatives to React/Next.js)
-            ("solidjs", "solid"),  # Reactive UI
-            ("sveltejs", "svelte"),  # Component framework
-            ("htmx", "htmx"),  # HTML extension
-            ("hotwired", "turbo"),  # Rails framework
-            ("phoenixframework", "phoenix"),  # Elixir framework
-            ("lucacasonato", "remix"),  # React framework
-            ("builderio", "qwik"),  # Resumable framework
-            ("marko-js", "marko"),  # UI framework
-            ("astro", "astro"),  # Web framework
-            ("fresh", "fresh"),  # Deno framework
-            ("elysiajs", "elysia"),  # Bun framework
-            ("hono", "hono"),  # Web framework
-            ("lit", "lit"),  # Web components
-            ("fastify", "fastify"),  # Node framework
-            ("poliastro", "poliastro"),  # Python web framework
-            
-            # Database Tools & ORMs
-            ("prisma", "prisma"),  # TypeScript ORM
-            ("drizzle-team", "drizzle-orm"),  # SQL ORM
-            ("supabase", "supabase"),  # Backend platform
-            ("planetscale", "planetscale"),  # Database platform
-            ("xata", "xata"),  # Serverless database
-            ("neondatabase", "neon"),  # Postgres platform
-            ("turso", "turso"),  # SQLite platform
-            ("libsql", "libsql"),  # SQLite fork
-            ("duckdb", "duckdb"),  # Analytical database
-            ("clickhouse", "clickhouse"),  # Columnar database
-            ("timescale", "timescaledb"),  # Postgres extension
-            ("pgvector", "pgvector"),  # Vector extension
-            ("qdrant", "qdrant"),  # Vector database
-            ("weaviate", "weaviate"),  # Vector database
-            ("milvus-io", "milvus"),  # Vector database
-            ("sequelize", "sequelize"),  # Node ORM
-            ("typeorm", "typeorm"),  # TypeScript ORM
-            ("sqlalchemy", "sqlalchemy"),  # Python ORM
-            
-            # DevOps & Infrastructure
-            ("hashicorp", "terraform"),  # IaC tool
-            ("hashicorp", "packer"),  # Image builder
-            ("ansible", "ansible"),  # Automation
-            ("puppetlabs", "puppet"),  # Configuration
-            ("chef", "chef"),  # Configuration
-            ("saltstack", "salt"),  # Automation
-            ("grafana", "grafana"),  # Monitoring
-            ("prometheus", "prometheus"),  # Monitoring
-            ("loki", "loki"),  # Logging
-            ("temporalio", "temporal"),  # Workflow engine
-            ("dapr", "dapr"),  # Microservices runtime
-            ("open-telemetry", "opentelemetry"),  # Observability
-            ("envoyproxy", "envoy"),  # Service proxy
-            ("kubernetes", "kubernetes"),  # Container orchestration
-            ("lima", "lima"),  # Linux VMs on Mac
-            ("colima", "colima"),  # Container runtime
-            ("rancher", "rancher"),  # K8s management
-            ("portainer", "portainer"),  # Container UI
-            
-            # Testing & Quality
-            ("jestjs", "jest"),  # Testing framework
-            ("vitest-dev", "vitest"),  # Testing framework
-            ("mswjs", "msw"),  # API mocking
-            ("playwright", "playwright"),  # E2E testing
-            ("cypress", "cypress"),  # E2E testing
-            ("testing-library", "testing-library"),  # Testing utilities
-            ("k6io", "k6"),  # Load testing
-            ("gatling", "gatling"),  # Load testing
-            ("locustio", "locust"),  # Load testing
-            ("sonarsource", "sonarqube"),  # Code quality
-            ("deepsource", "deepsource"),  # Code analysis
-            ("codecov", "codecov"),  # Code coverage
-            ("coveralls", "coveralls"),  # Code coverage
-            
-            # Security
-            ("aquasecurity", "trivy"),  # Security scanner
-            ("anchore", "grype"),  # Vulnerability scanner
-            ("snyk", "snyk"),  # Security platform
-            ("OWASP", "dependency-check"),  # Dependency scanner
-            ("zmap", "zmap"),  # Network scanner
-            ("microsoft", "gpt"),  # AI security
-            ("trailofbits", "audit"),  # Security audit
-        ]
+        # Use expanded dataset of 10,000 repos for database population
+        trending_repos = get_expanded_repos()
         
         orch = get_orchestrator()
         results = []
@@ -678,133 +429,8 @@ def discover_promising_repos():
         return jsonify(discovery_cache[cache_key]["data"])
     
     try:
-        # Predefined list of under-the-radar repos for promising analysis
-        # Same expanded dataset as quality for consistency
-        promising_repos = [
-            # Terminal & CLI Tools
-            ("starship", "starship"),  # Rust shell prompt
-            ("atuinsh", "atuin"),  # Shell history
-            ("zellij-org", "zellij"),  # Terminal multiplexer
-            ("helix-editor", "helix"),  # Modal text editor
-            ("eza-community", "eza"),  # Modern ls replacement
-            ("fd-dev", "fd"),  # Find alternative
-            ("sharkdp", "bat"),  # Cat alternative
-            ("sharkdp", "ripgrep"),  # Grep alternative
-            ("dandavison", "delta"),  # Git diff viewer
-            ("junegunn", "fzf"),  # Fuzzy finder
-            ("sxyazi", "yazi"),  # Terminal file manager
-            ("nushell", "nushell"),  # Modern shell
-            ("kovidgoyal", "kitty"),  # Terminal emulator
-            ("alacritty", "alacritty"),  # Terminal emulator
-            ("wez", "wezterm"),  # Terminal emulator
-            ("charmbracelet", "gum"),  # Shell script UI
-            ("charmbracelet", "lip Gloss"),  # TUI library
-            ("charmbracelet", "bubbletea"),  # TUI framework
-            ("c-batastrophe", "broot"),  # Tree viewer
-            ("canopas", "tldr"),  # Simplified man pages
-            ("o2sh", "onefetch"),  # Git info tool
-            ("ogham", "exa"),  # Modern ls (deprecated but popular)
-            
-            # Build Tools & Package Managers
-            ("golang", "go"),  # Go language
-            ("rust-lang", "cargo"),  # Rust package manager
-            ("pnpm", "pnpm"),  # Fast npm alternative
-            ("yarnpkg", "yarn"),  # Package manager
-            ("bun", "bun"),  # JS runtime
-            ("denoland", "deno"),  # JS runtime
-            ("sveltejs", "kit"),  # Svelte build tool
-            ("vitejs", "vite"),  # Build tool
-            ("swc-project", "swc"),  # JS/TS compiler
-            ("esbuild", "esbuild"),  # JS bundler
-            ("rome", "rome"),  # JS toolchain
-            ("biomejs", "biome"),  # JS linter/formatter
-            ("ruff-lang", "ruff"),  # Python linter
-            ("astral-sh", "uv"),  # Python package manager
-            ("mitsuhiko", "rye"),  # Python toolchain
-            ("poetry", "poetry"),  # Python dependency manager
-            ("pypa", "pip"),  # Python installer
-            
-            # Web Frameworks (Alternatives to React/Next.js)
-            ("solidjs", "solid"),  # Reactive UI
-            ("sveltejs", "svelte"),  # Component framework
-            ("htmx", "htmx"),  # HTML extension
-            ("hotwired", "turbo"),  # Rails framework
-            ("phoenixframework", "phoenix"),  # Elixir framework
-            ("lucacasonato", "remix"),  # React framework
-            ("builderio", "qwik"),  # Resumable framework
-            ("marko-js", "marko"),  # UI framework
-            ("astro", "astro"),  # Web framework
-            ("fresh", "fresh"),  # Deno framework
-            ("elysiajs", "elysia"),  # Bun framework
-            ("hono", "hono"),  # Web framework
-            ("lit", "lit"),  # Web components
-            ("fastify", "fastify"),  # Node framework
-            ("poliastro", "poliastro"),  # Python web framework
-            
-            # Database Tools & ORMs
-            ("prisma", "prisma"),  # TypeScript ORM
-            ("drizzle-team", "drizzle-orm"),  # SQL ORM
-            ("supabase", "supabase"),  # Backend platform
-            ("planetscale", "planetscale"),  # Database platform
-            ("xata", "xata"),  # Serverless database
-            ("neondatabase", "neon"),  # Postgres platform
-            ("turso", "turso"),  # SQLite platform
-            ("libsql", "libsql"),  # SQLite fork
-            ("duckdb", "duckdb"),  # Analytical database
-            ("clickhouse", "clickhouse"),  # Columnar database
-            ("timescale", "timescaledb"),  # Postgres extension
-            ("pgvector", "pgvector"),  # Vector extension
-            ("qdrant", "qdrant"),  # Vector database
-            ("weaviate", "weaviate"),  # Vector database
-            ("milvus-io", "milvus"),  # Vector database
-            ("sequelize", "sequelize"),  # Node ORM
-            ("typeorm", "typeorm"),  # TypeScript ORM
-            ("sqlalchemy", "sqlalchemy"),  # Python ORM
-            
-            # DevOps & Infrastructure
-            ("hashicorp", "terraform"),  # IaC tool
-            ("hashicorp", "packer"),  # Image builder
-            ("ansible", "ansible"),  # Automation
-            ("puppetlabs", "puppet"),  # Configuration
-            ("chef", "chef"),  # Configuration
-            ("saltstack", "salt"),  # Automation
-            ("grafana", "grafana"),  # Monitoring
-            ("prometheus", "prometheus"),  # Monitoring
-            ("loki", "loki"),  # Logging
-            ("temporalio", "temporal"),  # Workflow engine
-            ("dapr", "dapr"),  # Microservices runtime
-            ("open-telemetry", "opentelemetry"),  # Observability
-            ("envoyproxy", "envoy"),  # Service proxy
-            ("kubernetes", "kubernetes"),  # Container orchestration
-            ("lima", "lima"),  # Linux VMs on Mac
-            ("colima", "colima"),  # Container runtime
-            ("rancher", "rancher"),  # K8s management
-            ("portainer", "portainer"),  # Container UI
-            
-            # Testing & Quality
-            ("jestjs", "jest"),  # Testing framework
-            ("vitest-dev", "vitest"),  # Testing framework
-            ("mswjs", "msw"),  # API mocking
-            ("playwright", "playwright"),  # E2E testing
-            ("cypress", "cypress"),  # E2E testing
-            ("testing-library", "testing-library"),  # Testing utilities
-            ("k6io", "k6"),  # Load testing
-            ("gatling", "gatling"),  # Load testing
-            ("locustio", "locust"),  # Load testing
-            ("sonarsource", "sonarqube"),  # Code quality
-            ("deepsource", "deepsource"),  # Code analysis
-            ("codecov", "codecov"),  # Code coverage
-            ("coveralls", "coveralls"),  # Code coverage
-            
-            # Security
-            ("aquasecurity", "trivy"),  # Security scanner
-            ("anchore", "grype"),  # Vulnerability scanner
-            ("snyk", "snyk"),  # Security platform
-            ("OWASP", "dependency-check"),  # Dependency scanner
-            ("zmap", "zmap"),  # Network scanner
-            ("microsoft", "gpt"),  # AI security
-            ("trailofbits", "audit"),  # Security audit
-        ]
+        # Use expanded dataset of 10,000 repos for database population
+        promising_repos = get_expanded_repos()
         
         orch = get_orchestrator()
         results = []
@@ -868,6 +494,84 @@ def discover_promising_repos():
     except Exception as e:
         logger.error(f"Promising discovery failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/database/populate', methods=['POST'])
+def populate_database():
+    """Populate outcome ledger with appraisals from dataset."""
+    try:
+        # Get parameters
+        count = int(request.json.get('count', 100))
+        offset = int(request.json.get('offset', 0))
+        
+        # Get repos from expanded dataset
+        all_repos = get_expanded_repos()
+        repos_to_analyze = all_repos[offset:offset + count]
+        
+        logger.info(f"Populating database with {len(repos_to_analyze)} repos (offset: {offset})")
+        
+        orch = get_orchestrator()
+        results = []
+        appraisals_created = 0
+        errors = 0
+        
+        # Parallel processing
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_repo = {
+                executor.submit(orch.analyze_repo, owner, repo): (owner, repo)
+                for owner, repo in repos_to_analyze
+            }
+            
+            for future in as_completed(future_to_repo):
+                owner, repo = future_to_repo[future]
+                try:
+                    result = future.result()
+                    if "error" not in result:
+                        repo_data = result.get("repo_data", {})
+                        analysis = result.get("analysis", {})
+                        valuation = analysis.get("valuation", {})
+                        
+                        # Create appraisal record in outcome ledger
+                        appraisal_data = {
+                            "repo": f"{owner}/{repo}",
+                            "repo_data": repo_data,
+                            "analysis": analysis,
+                            "valuation": valuation,
+                            "innovation_alpha": valuation.get("innovation_alpha", 0),
+                            "expected_future_value": valuation.get("expected_future_value", 0),
+                            "current_recognition": valuation.get("current_recognition", 0),
+                            "intervention_score": analysis.get("intervention_score", 0),
+                            "best_intervention": analysis.get("best_intervention", {}),
+                            "overall_confidence": valuation.get("overall_confidence", 0),
+                            "evidence_strength": valuation.get("evidence_strength", 0),
+                            "model_confidence": valuation.get("model_confidence", 0),
+                            "data_coverage": valuation.get("data_coverage", 0),
+                        }
+                        
+                        results.append(appraisal_data)
+                        appraisals_created += 1
+                    else:
+                        errors += 1
+                        logger.error(f"Error analyzing {owner}/{repo}: {result.get('error')}")
+                except Exception as e:
+                    errors += 1
+                    logger.error(f"Error processing {owner}/{repo}: {e}")
+        
+        logger.info(f"Database population complete: {appraisals_created} appraisals created, {errors} errors")
+        
+        return jsonify({
+            "success": True,
+            "appraisals_created": appraisals_created,
+            "errors": errors,
+            "offset": offset,
+            "count": len(repos_to_analyze),
+            "results": results[:10],  # Return first 10 for preview
+            "total_in_dataset": len(all_repos)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error populating database: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":
