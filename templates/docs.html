@@ -246,7 +246,8 @@ curl -X POST <span class="string">"https://catacomb-eight.vercel.app/api/v1/infe
                         <div class="code-block">
 curl -X POST <span class="string">"https://catacomb-eight.vercel.app/api/v1/repo/ingest"</span> \
   -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{"owner":"microsoft","repo":"vscode","github_token":"ghp_xxx"}'</span>
+  -H <span class="string">"Authorization: Bearer YOUR_GITHUB_TOKEN"</span> \
+  -d <span class="string">'{"owner":"microsoft","repo":"vscode"}'</span>
                         </div>
                     </div>
                 </div>
