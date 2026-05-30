@@ -46,8 +46,8 @@ mining_status = {"in_progress": False, "progress": 0, "total": 0, "message": ""}
 
 @app.route('/')
 def index():
-    """Redirect to Radar as default landing."""
-    return redirect('/radar')
+    """Sophisticated landing page."""
+    return render_template('landing.html')
 
 @app.route('/dashboard')
 def dashboard():
@@ -282,9 +282,186 @@ def radar_allocation_api():
     allocation = radar.calculate_portfolio_allocation(total_days)
     return jsonify(allocation)
 
+@app.route('/api/v1/stats')
+def api_stats():
+    """Comprehensive system statistics."""
+    import sqlite3
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    # Count total interventions
+    cursor.execute("SELECT COUNT(*) FROM interventions")
+    total_interventions = cursor.fetchone()[0]
+    
+    # Count verified
+    cursor.execute("SELECT COUNT(*) FROM interventions WHERE verification_status = ?", (VerificationStatus.VERIFIED.value,))
+    verified = cursor.fetchone()[0]
+    
+    # Count completed
+    cursor.execute("SELECT COUNT(*) FROM interventions WHERE status = ?", (InterventionStatus.COMPLETED.value,))
+    completed = cursor.fetchone()[0]
+    
+    # Average predicted value
+    cursor.execute("SELECT AVG(CAST(json_extract(predicted_outcome, '$.value') AS FLOAT)) FROM interventions WHERE predicted_outcome IS NOT NULL")
+    avg_predicted = cursor.fetchone()[0] or 0
+    
+    # Average actual value
+    cursor.execute("SELECT AVG(CAST(json_extract(outcome_metrics, '$.actual_value') AS FLOAT)) FROM interventions WHERE outcome_metrics IS NOT NULL")
+    avg_actual = cursor.fetchone()[0] or 0
+    
+    # Unique assets
+    cursor.execute("SELECT COUNT(DISTINCT asset_id) FROM interventions")
+    unique_assets = cursor.fetchone()[0]
+    
+    # Top intervention types
+    cursor.execute("SELECT intervention_type, COUNT(*) as count FROM interventions GROUP BY intervention_type ORDER BY count DESC LIMIT 5")
+    top_types = [{"type": row[0], "count": row[1]} for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return jsonify({
+        "total_interventions": total_interventions,
+        "verified_interventions": verified,
+        "completed_interventions": completed,
+        "average_predicted_value": round(avg_predicted, 2),
+        "average_actual_value": round(avg_actual, 2),
+        "unique_assets": unique_assets,
+        "top_intervention_types": top_types,
+        "prediction_accuracy": accuracy_tracker.get_accuracy_report(),
+        "radar_summary": radar.get_radar_summary(),
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+@app.route('/api/v1/interventions')
+def api_interventions():
+    """Paginated list of all interventions."""
+    import sqlite3
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status_filter = request.args.get('status')
+    type_filter = request.args.get('type')
+    
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM interventions WHERE 1=1"
+    params = []
+    
+    if status_filter:
+        query += " AND status = ?"
+        params.append(status_filter)
+    if type_filter:
+        query += " AND intervention_type = ?"
+        params.append(type_filter)
+    
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params.extend([per_page, (page - 1) * per_page])
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    
+    records = []
+    for row in rows:
+        record = dict(zip(columns, row))
+        for json_field in ['before_state', 'predicted_outcome', 'after_state', 'outcome_metrics']:
+            if record.get(json_field):
+                try:
+                    record[json_field] = json.loads(record[json_field])
+                except:
+                    pass
+        records.append(record)
+    
+    # Get total count
+    count_query = "SELECT COUNT(*) FROM interventions WHERE 1=1"
+    count_params = []
+    if status_filter:
+        count_query += " AND status = ?"
+        count_params.append(status_filter)
+    if type_filter:
+        count_query += " AND intervention_type = ?"
+        count_params.append(type_filter)
+    
+    cursor.execute(count_query, count_params)
+    total = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return jsonify({
+        "interventions": records,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "pages": (total + per_page - 1) // per_page
+        }
+    })
+
+@app.route('/api/v1/assets')
+def api_assets():
+    """List of tracked assets with metrics."""
+    import sqlite3
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT 
+            asset_id,
+            asset_name,
+            asset_type,
+            COUNT(*) as intervention_count,
+            AVG(CAST(json_extract(predicted_outcome, '$.value') AS FLOAT)) as avg_predicted_value,
+            MAX(created_at) as last_intervention
+        FROM interventions 
+        GROUP BY asset_id 
+        ORDER BY intervention_count DESC
+    """)
+    
+    rows = cursor.fetchall()
+    assets = []
+    for row in rows:
+        assets.append({
+            "asset_id": row[0],
+            "asset_name": row[1],
+            "asset_type": row[2],
+            "intervention_count": row[3],
+            "avg_predicted_value": round(row[4] or 0, 2),
+            "last_intervention": row[5]
+        })
+    
+    conn.close()
+    return jsonify({"assets": assets, "total": len(assets)})
+
+@app.route('/api/v1/intervention/<intervention_id>')
+def api_intervention_detail(intervention_id):
+    """Get detailed information about a specific intervention."""
+    import sqlite3
+    conn = sqlite3.connect(ledger.db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM interventions WHERE id = ?", (intervention_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return jsonify({"error": "Intervention not found"}), 404
+    
+    columns = [desc[0] for desc in cursor.description]
+    record = dict(zip(columns, row))
+    
+    for json_field in ['before_state', 'predicted_outcome', 'after_state', 'outcome_metrics']:
+        if record.get(json_field):
+            try:
+                record[json_field] = json.loads(record[json_field])
+            except:
+                pass
+    
+    conn.close()
+    return jsonify(record)
+
 @app.route('/api/health')
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "version": "2.0", "timestamp": datetime.utcnow().isoformat()})
 
 @app.route('/api/accuracy/report')
 def accuracy_report_api():
@@ -296,6 +473,82 @@ def set_baseline_api():
     """Set current metrics as baseline for drift calculation."""
     accuracy_tracker.set_baseline()
     return jsonify({"status": "baseline_set", "timestamp": datetime.utcnow().isoformat()})
+
+# Google OAuth
+from authlib.integrations.flask_client import OAuth
+
+oauth = OAuth(app)
+
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    client_kwargs={
+        'scope': 'openid email profile',
+        'token_endpoint_auth_method': 'client_secret_basic',
+    },
+    jwks_uri='https://www.googleapis.com/oauth2/v3/certs',
+)
+
+@app.route('/login')
+def login():
+    """Initiate Google OAuth login."""
+    redirect_uri = url_for('authorize', _external=True)
+    # Handle Vercel HTTPS proxy
+    if os.environ.get('VERCEL'):
+        redirect_uri = redirect_uri.replace('http://', 'https://')
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google/callback')
+def authorize():
+    """Handle Google OAuth callback."""
+    try:
+        token = google.authorize_access_token()
+        resp = google.get('userinfo')
+        user_info = resp.json()
+        
+        # Store user info in cookie (JWT-like simple approach for Vercel)
+        import base64
+        user_data = json.dumps({
+            'email': user_info.get('email'),
+            'name': user_info.get('name'),
+            'picture': user_info.get('picture'),
+            'sub': user_info.get('id')
+        })
+        
+        response = redirect('/radar')
+        response.set_cookie('catacomb_user', base64.b64encode(user_data.encode()).decode(), 
+                           max_age=86400, httponly=True, samesite='Lax')
+        return response
+    except Exception as e:
+        flash(f'Authentication failed: {str(e)}', 'error')
+        return redirect('/')
+
+@app.route('/logout')
+def logout():
+    """Clear user session."""
+    response = redirect('/')
+    response.set_cookie('catacomb_user', '', expires=0)
+    return response
+
+@app.route('/api/user')
+def api_user():
+    """Get current user info from cookie."""
+    import base64
+    user_cookie = request.cookies.get('catacomb_user')
+    if not user_cookie:
+        return jsonify({"authenticated": False})
+    
+    try:
+        user_data = json.loads(base64.b64decode(user_cookie).decode())
+        return jsonify({"authenticated": True, "user": user_data})
+    except:
+        return jsonify({"authenticated": False})
 
 # Vercel serverless handler
 def handler(event, context):

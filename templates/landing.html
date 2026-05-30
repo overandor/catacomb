@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb — Software Intelligence Terminal</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        /* Landing Page Specific Styles */
+        .landing-hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            padding: 40px 32px;
+        }
+
+        .landing-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(255, 215, 0, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 100%, rgba(220, 20, 60, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .landing-hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+        }
+
+        .landing-tagline {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--forged-orange);
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .landing-title {
+            font-size: 72px;
+            font-weight: 800;
+            line-height: 1.05;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease-out 0.1s backwards;
+        }
+
+        .landing-title .gradient {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .landing-subtitle {
+            font-size: 20px;
+            color: var(--warm-stone);
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto 40px;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+        }
+
+        .landing-cta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            animation: fadeInUp 0.8s ease-out 0.3s backwards;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-primary {
+            background: var(--gold-gradient);
+            color: #0a0a0f;
+            box-shadow: 0 0 30px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--light-stone);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.5);
+            color: #fff;
+        }
+
+        /* Live Stats Ticker */
+        .landing-stats {
+            display: flex;
+            gap: 48px;
+            justify-content: center;
+            margin-top: 60px;
+            animation: fadeInUp 0.8s ease-out 0.4s backwards;
+        }
+
+        .landing-stat {
+            text-align: center;
+        }
+
+        .landing-stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .landing-stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--warm-stone);
+            margin-top: 4px;
+        }
+
+        /* Feature Grid */
+        .features-section {
+            padding: 100px 32px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .features-header h2 {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .features-header p {
+            color: var(--warm-stone);
+            font-size: 16px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--volcanic-graphite);
+            border: 1px solid rgba(255, 215, 0, 0.1);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gold-gradient);
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 215, 0, 0.3);
+            box-shadow: var(--card-glow);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--warm-stone);
+            line-height: 1.5;
+        }
+
+        /* Terminal Demo */
+        .terminal-section {
+            padding: 80px 32px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .terminal-window {
+            background: #0d0d14;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .terminal-dot.red { background: var(--crimson-risk); }
+        .terminal-dot.yellow { background: var(--amber-glow); }
+        .terminal-dot.green { background: #4ade80; }
+
+        .terminal-title {
+            font-size: 12px;
+            color: var(--warm-stone);
+            margin-left: 12px;
+        }
+
+        .terminal-body {
+            padding: 24px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--light-stone);
+        }
+
+        .terminal-line {
+            margin-bottom: 4px;
+        }
+
+        .terminal-prompt {
+            color: var(--forged-orange);
+        }
+
+        .terminal-command {
+            color: #fff;
+        }
+
+        .terminal-output {
+            color: var(--warm-stone);
+        }
+
+        .terminal-highlight {
+            color: var(--molten-gold);
+        }
+
+        .terminal-success {
+            color: #4ade80;
+        }
+
+        /* Auth Section */
+        .auth-bar {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            z-index: 2;
+        }
+
+        .auth-bar a {
+            color: var(--warm-stone);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .auth-bar a:hover {
+            background: rgba(255, 215, 0, 0.1);
+            color: #fff;
+        }
+
+        /* Footer */
+        .landing-footer {
+            padding: 40px 32px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .landing-footer p {
+            font-size: 12px;
+            color: var(--warm-stone);
+        }
+
+        /* Canvas Background */
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        @media (max-width: 768px) {
+            .landing-title {
+                font-size: 42px;
+            }
+
+            .landing-subtitle {
+                font-size: 16px;
+            }
+
+            .landing-stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-cta {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-hero">
+        <canvas id="particle-canvas"></canvas>
+
+        <div class="auth-bar">
+            <a href="/login">Sign In</a>
+        </div>
+
+        <div class="landing-hero-content">
+            <div class="landing-tagline">Institutional-Grade Software Intelligence</div>
+            <h1 class="landing-title">
+                Discover Hidden<br>
+                <span class="gradient">Software Alpha</span>
+            </h1>
+            <p class="landing-subtitle">
+                Catacomb is an underground software intelligence terminal that identifies undervalued infrastructure assets, 
+                predicts intervention outcomes, and tracks verified transformations.
+            </p>
+            <div class="landing-cta">
+                <a href="/radar" class="btn btn-primary">Enter Terminal</a>
+                <a href="/mine" class="btn btn-secondary">Start Mining</a>
+            </div>
+
+            <div class="landing-stats">
+                <div class="landing-stat">
+                    <div class="landing-stat-value" data-count="149">0</div>
+                    <div class="landing-stat-label">Verified Interventions</div>
+                </div>
+                <div class="landing-stat">
+                    <div class="landing-stat-value" data-count="2341">0</div>
+                    <div class="landing-stat-label">Assets Under Watch</div>
+                </div>
+                <div class="landing-stat">
+                    <div class="landing-stat-value" data-count="847">0</div>
+                    <div class="landing-stat-label">Hidden Infrastructure</div>
+                </div>
+                <div class="landing-stat">
+                    <div class="landing-stat-value" data-count="72" data-suffix="%">0</div>
+                    <div class="landing-stat-label">Prediction Accuracy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="features-section">
+        <div class="features-header">
+            <h2>Product Modules</h2>
+            <p>Seven intelligence systems. One unified terminal.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#9670;</div>
+                <h3>Radar</h3>
+                <p>Hidden infrastructure discovery ranked by expected value per engineering day. Find the next undervalued asset before the market notices.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9671;</div>
+                <h3>Alpha</h3>
+                <p>Innovation alpha scoring for undervalued assets. Quantifies the gap between current recognition and true intervention potential.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9672;</div>
+                <h3>Interventions</h3>
+                <p>Action intelligence ranked by value per engineering day. Investment memo style cards with evidence, risks, and confidence breakdowns.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9673;</div>
+                <h3>Mine</h3>
+                <p>Industrial extraction system for mining intervention traces from GitHub and package ecosystems. Live progress tracking.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9674;</div>
+                <h3>Ledger</h3>
+                <p>Institutional audit trail. Asset &rarr; Intervention &rarr; Prediction &rarr; Outcome &rarr; Verification. The trust layer.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9675;</div>
+                <h3>Swipe</h3>
+                <p>Premium asset discovery interface. Tinder-like swiping with keyboard shortcuts for rapid opportunity evaluation.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal-section">
+        <div class="terminal-window">
+            <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+                <span class="terminal-title">catacomb-cli</span>
+            </div>
+            <div class="terminal-body">
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span> <span class="terminal-command">catacomb scan --ecosystem npm --limit 100</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    Scanning npm registry... <span class="terminal-highlight">done</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    Found <span class="terminal-highlight">23</span> hidden infrastructure assets
+                </div>
+                <div class="terminal-line terminal-output">
+                    Average innovation alpha: <span class="terminal-highlight">+34.2</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    Top opportunity: <span class="terminal-success">dependency-graph-analyzer</span> (2.45 EV/day)
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span> <span class="terminal-command">catacomb intervene --asset dep-graph --type api_launch</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    Predicted value delta: <span class="terminal-highlight">+45.2</span> (confidence: 85%)
+                </div>
+                <div class="terminal-line terminal-output">
+                    Estimated effort: <span class="terminal-highlight">21 days</span> | Bus factor: <span class="terminal-highlight">1</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    <span class="terminal-success">Intervention recorded in ledger. Awaiting verification.</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span> <span class="terminal-command">_</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="landing-footer">
+        <p>Catacomb Software Intelligence Terminal &middot; Built for institutional-grade alpha discovery</p>
+    </div>
+
+    <script>
+        // Particle Network Animation
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationId;
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        function createParticles() {
+            particles = [];
+            const count = Math.min(80, Math.floor((canvas.width * canvas.height) / 15000));
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3,
+                    radius: Math.random() * 1.5 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 150) {
+                        const opacity = (1 - dist / 150) * 0.15;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(255, 107, 53, ${opacity})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw particles
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 215, 0, ${p.opacity})`;
+                ctx.fill();
+
+                // Update position
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Bounce off edges
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                // Keep in bounds
+                p.x = Math.max(0, Math.min(canvas.width, p.x));
+                p.y = Math.max(0, Math.min(canvas.height, p.y));
+            });
+
+            animationId = requestAnimationFrame(drawParticles);
+        }
+
+        // Initialize
+        resizeCanvas();
+        createParticles();
+        drawParticles();
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createParticles();
+        });
+
+        // Count up animation
+        const statValues = document.querySelectorAll('.landing-stat-value');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const el = entry.target;
+                    const target = parseInt(el.dataset.count);
+                    const suffix = el.dataset.suffix || '';
+                    const duration = 2000;
+                    const startTime = performance.now();
+
+                    function update(currentTime) {
+                        const elapsed = currentTime - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const eased = 1 - Math.pow(1 - progress, 3);
+                        const current = Math.floor(eased * target);
+                        el.textContent = current.toLocaleString() + suffix;
+
+                        if (progress < 1) {
+                            requestAnimationFrame(update);
+                        }
+                    }
+
+                    requestAnimationFrame(update);
+                    observer.unobserve(el);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        statValues.forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>
