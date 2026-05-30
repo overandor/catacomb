@@ -184,6 +184,11 @@ def alpha_page():
     """Innovation Alpha - Undervalued software assets."""
     return render_template('alpha.html')
 
+@app.route('/interventions')
+def interventions_page():
+    """Intervention Intelligence - Ranked by value per engineering day."""
+    return render_template('interventions.html')
+
 @app.route('/api/radar/summary')
 def radar_summary_api():
     """Get radar summary statistics."""
