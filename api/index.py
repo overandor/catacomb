@@ -10,6 +10,8 @@ from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationSta
 from innovation_elo import InnovationElo, EloEntityType
 from transformation_tracking import TransformationTracker
 from github_intervention_miner import GitHubInterventionMiner, seed_mined_interventions
+from catacomb_radar import CatacombRadar, RadarSignal
+from universe_classifier import UniverseClassifier, AssetMetrics, Universe
 from datetime import datetime
 import json
 import threading
@@ -26,6 +28,8 @@ else:
 ledger = OutcomeLedger(db_path)
 elo_system = InnovationElo()
 transformation_tracker = TransformationTracker()
+radar = CatacombRadar()
+classifier = UniverseClassifier()
 
 # Global variable for mining status
 mining_status = {"in_progress": False, "progress": 0, "total": 0, "message": ""}
@@ -157,6 +161,42 @@ def start_mining():
 def mining_status_api():
     """Get current mining status."""
     return jsonify(mining_status)
+
+@app.route('/radar')
+def catacomb_radar():
+    """Catacomb Radar - Hidden infrastructure opportunities."""
+    top_signals = radar.get_top_signals(limit=50)
+    summary = radar.get_radar_summary()
+    return render_template('radar.html', signals=top_signals, summary=summary)
+
+@app.route('/api/radar/summary')
+def radar_summary_api():
+    """Get radar summary statistics."""
+    return jsonify(radar.get_radar_summary())
+
+@app.route('/api/radar/signals')
+def radar_signals_api():
+    """Get all radar signals."""
+    limit = request.args.get('limit', 50, type=int)
+    return jsonify([{
+        "asset_id": s.asset_id,
+        "asset_name": s.asset_name,
+        "asset_type": s.asset_type,
+        "expected_value_per_day": s.expected_value_per_day,
+        "best_intervention": s.best_intervention,
+        "effort_days_estimate": s.effort_days_estimate,
+        "confidence": s.confidence,
+        "signal_strength": s.signal_strength,
+        "evidence": s.evidence
+    } for s in radar.get_top_signals(limit)])
+
+@app.route('/api/radar/allocate', methods=['POST'])
+def radar_allocation_api():
+    """Calculate optimal portfolio allocation."""
+    data = request.get_json()
+    total_days = data.get('total_engineering_days', 30)
+    allocation = radar.calculate_portfolio_allocation(total_days)
+    return jsonify(allocation)
 
 @app.route('/api/health')
 def health():
