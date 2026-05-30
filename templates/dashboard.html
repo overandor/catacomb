@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb Terminal | Software Intelligence</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+    <style>
+        /* Bloomberg Terminal Layout */
+        .terminal-app {
+            display: grid;
+            grid-template-rows: 32px 1fr 28px;
+            height: 100vh;
+            background: var(--obsidian-black);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            overflow: hidden;
+        }
+
+        /* Ticker Tape */
+        .ticker-tape {
+            background: #0d0d14;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .ticker-tape::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 120px;
+            background: linear-gradient(90deg, #0d0d14 0%, transparent 100%);
+            z-index: 2;
+        }
+
+        .ticker-tape::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 120px;
+            background: linear-gradient(270deg, #0d0d14 0%, transparent 100%);
+            z-index: 2;
+        }
+
+        .ticker-content {
+            display: flex;
+            gap: 32px;
+            animation: ticker 30s linear infinite;
+            padding-left: 100%;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .ticker-symbol {
+            color: var(--molten-gold);
+            font-weight: 600;
+        }
+
+        .ticker-value {
+            color: #fff;
+        }
+
+        .ticker-change.positive {
+            color: #4ade80;
+        }
+
+        .ticker-change.negative {
+            color: var(--crimson-risk);
+        }
+
+        /* Main Workspace */
+        .terminal-workspace {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .terminal-sidebar {
+            background: var(--volcanic-graphite);
+            border-right: 1px solid rgba(255, 215, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--warm-stone);
+        }
+
+        .sidebar-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255, 107, 53, 0.1);
+            color: #fff;
+        }
+
+        .sidebar-item.active {
+            background: rgba(255, 107, 53, 0.15);
+            border-left-color: var(--forged-orange);
+            color: #fff;
+        }
+
+        .sidebar-item .shortcut {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--warm-stone);
+            opacity: 0.6;
+        }
+
+        /* Panel Grid */
+        .terminal-panels {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--obsidian-black);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--volcanic-graphite);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-title {
+            color: var(--molten-gold);
+            font-weight: 600;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .panel-btn {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            color: var(--warm-stone);
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+        }
+
+        /* Data Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 6px 8px;
+            color: var(--warm-stone);
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            background: var(--obsidian-black);
+        }
+
+        .data-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--light-stone);
+        }
+
+        .data-table tr:hover td {
+            background: rgba(255, 107, 53, 0.05);
+        }
+
+        .data-table .positive {
+            color: #4ade80;
+        }
+
+        .data-table .negative {
+            color: var(--crimson-risk);
+        }
+
+        .data-table .highlight {
+            color: var(--molten-gold);
+            font-weight: 600;
+        }
+
+        /* Chart Area */
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            padding: 8px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--forged-orange) 0%, var(--molten-gold) 100%);
+            border-radius: 2px 2px 0 0;
+            min-height: 4px;
+            transition: height 0.5s ease;
+            opacity: 0.8;
+        }
+
+        .chart-bar:hover {
+            opacity: 1;
+            box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+        }
+
+        /* Alert Feed */
+        .alert-item {
+            padding: 6px 8px;
+            border-left: 3px solid transparent;
+            margin-bottom: 4px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-item.high {
+            border-left-color: var(--crimson-risk);
+            background: rgba(220, 20, 60, 0.05);
+        }
+
+        .alert-item.medium {
+            border-left-color: var(--amber-glow);
+            background: rgba(255, 179, 71, 0.05);
+        }
+
+        .alert-item.low {
+            border-left-color: #4ade80;
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        .alert-time {
+            color: var(--warm-stone);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .alert-message {
+            color: var(--light-stone);
+            flex: 1;
+        }
+
+        /* Command Line */
+        .terminal-command-line {
+            background: #0d0d14;
+            border-top: 1px solid rgba(255, 215, 0, 0.15);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+        }
+
+        .terminal-prompt {
+            color: var(--forged-orange);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            outline: none;
+            padding: 6px 0;
+        }
+
+        .terminal-input::placeholder {
+            color: var(--warm-stone);
+            opacity: 0.5;
+        }
+
+        .terminal-status {
+            color: var(--warm-stone);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 8px;
+        }
+
+        .metric-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .metric-box-label {
+            font-size: 10px;
+            color: var(--warm-stone);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .metric-box-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--molten-gold);
+        }
+
+        .metric-box-change {
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        /* Fullscreen panel */
+        .panel.fullscreen {
+            position: fixed;
+            top: 32px;
+            left: 200px;
+            right: 0;
+            bottom: 28px;
+            z-index: 100;
+            grid-column: auto;
+            grid-row: auto;
+        }
+
+        /* Scrollbar for panels */
+        .panel-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb {
+            background: var(--deep-graphite);
+            border-radius: 3px;
+        }
+
+        /* Status indicators */
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.online {
+            background: #4ade80;
+            box-shadow: 0 0 6px #4ade80;
+        }
+
+        .status-dot.offline {
+            background: var(--crimson-risk);
+        }
+
+        .status-dot.warning {
+            background: var(--amber-glow);
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-app">
+        <!-- Ticker Tape -->
+        <div class="ticker-tape">
+            <div class="ticker-content" id="ticker-content">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="terminal-workspace">
+            <!-- Sidebar -->
+            <div class="terminal-sidebar">
+                <div class="sidebar-header">Modules</div>
+                <div class="sidebar-item active" data-panel="radar">
+                    <span>&#9670;</span> Radar <span class="shortcut">F1</span>
+                </div>
+                <div class="sidebar-item" data-panel="alpha">
+                    <span>&#9671;</span> Alpha <span class="shortcut">F2</span>
+                </div>
+                <div class="sidebar-item" data-panel="interventions">
+                    <span>&#9672;</span> Interventions <span class="shortcut">F3</span>
+                </div>
+                <div class="sidebar-item" data-panel="mine">
+                    <span>&#9673;</span> Mine <span class="shortcut">F4</span>
+                </div>
+                <div class="sidebar-item" data-panel="ledger">
+                    <span>&#9674;</span> Ledger <span class="shortcut">F5</span>
+                </div>
+                <div class="sidebar-item" data-panel="swipe">
+                    <span>&#9675;</span> Swipe <span class="shortcut">F6</span>
+                </div>
+
+                <div class="sidebar-header" style="margin-top: auto;">System</div>
+                <div class="sidebar-item" data-panel="portfolio">
+                    <span>&#9632;</span> Portfolio <span class="shortcut">F7</span>
+                </div>
+                <div class="sidebar-item" data-panel="alerts">
+                    <span>&#9633;</span> Alerts <span class="shortcut">F8</span>
+                </div>
+                <div class="sidebar-item">
+                    <span class="status-dot online"></span> Live
+                </div>
+            </div>
+
+            <!-- Panels -->
+            <div class="terminal-panels" id="terminal-panels">
+                <!-- Top Left: Radar Signals -->
+                <div class="panel" data-panel="radar">
+                    <div class="panel-header">
+                        <span class="panel-title">Radar Signals</span>
+                        <div class="panel-actions">
+                            <button class="panel-btn" title="Refresh">&#8635;</button>
+                            <button class="panel-btn" title="Fullscreen">&#9974;</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <table class="data-table" id="radar-table">
+                            <thead>
+                                <tr>
+                                    <th>Asset</th>
+                                    <th>Type</th>
+                                    <th>EV/Day</th>
+                                    <th>Alpha</th>
+                                    <th>Effort</th>
+                                    <th>Conf</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Right: Performance Chart -->
+                <div class="panel" data-panel="alpha">
+                    <div class="panel-header">
+                        <span class="panel-title">Innovation Alpha Distribution</span>
+                        <div class="panel-actions">
+                            <button class="panel-btn" title="Settings">&#9881;</button>
+                            <button class="panel-btn" title="Fullscreen">&#9974;</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="metrics-grid" style="margin-bottom: 8px;">
+                            <div class="metric-box">
+                                <div class="metric-box-label">Avg Alpha</div>
+                                <div class="metric-box-value" id="avg-alpha">+34.2</div>
+                            </div>
+                            <div class="metric-box">
+                                <div class="metric-box-label">Max Alpha</div>
+                                <div class="metric-box-value" id="max-alpha">+87.5</div>
+                            </div>
+                            <div class="metric-box">
+                                <div class="metric-box-label">Alpha Count</div>
+                                <div class="metric-box-value" id="alpha-count">847</div>
+                            </div>
+                        </div>
+                        <div class="chart-container" id="alpha-chart"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Left: Interventions -->
+                <div class="panel" data-panel="interventions">
+                    <div class="panel-header">
+                        <span class="panel-title">Recent Interventions</span>
+                        <div class="panel-actions">
+                            <button class="panel-btn" title="Filter">&#9906;</button>
+                            <button class="panel-btn" title="Fullscreen">&#9974;</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <table class="data-table" id="interventions-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Asset</th>
+                                    <th>Type</th>
+                                    <th>Pred</th>
+                                    <th>Actual</th>
+                                    <th>Delta</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bottom Right: Alerts -->
+                <div class="panel" data-panel="alerts">
+                    <div class="panel-header">
+                        <span class="panel-title">System Alerts</span>
+                        <div class="panel-actions">
+                            <button class="panel-btn" title="Clear">&#10005;</button>
+                            <button class="panel-btn" title="Fullscreen">&#9974;</button>
+                        </div>
+                    </div>
+                    <div class="panel-body" id="alerts-feed"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Line -->
+        <div class="terminal-command-line">
+            <span class="terminal-prompt">catacomb&gt;</span>
+            <input type="text" class="terminal-input" id="terminal-input" placeholder="Type command... (help for list)" autocomplete="off">
+            <span class="terminal-status" id="terminal-status">Ready</span>
+        </div>
+    </div>
+
+    <script>
+        // ===== DATA =====
+        const radarSignals = [
+            { asset: 'dependency-graph-analyzer', type: 'GitHub', ev: 2.45, alpha: 45.2, effort: 21, conf: 85, status: 'pending' },
+            { asset: 'rust-telemetry-daemon', type: 'GitHub', ev: 1.87, alpha: 32.8, effort: 18, conf: 78, status: 'pending' },
+            { asset: 'hidden-asset-finder', type: 'GitHub', ev: 1.92, alpha: 38.5, effort: 20, conf: 65, status: 'pending' },
+            { asset: 'package-ecosystem-monitor', type: 'GitHub', ev: 0.45, alpha: 3.2, effort: 7, conf: 58, status: 'fair' },
+            { asset: 'build-system-optimizer', type: 'GitHub', ev: 1.34, alpha: 28.4, effort: 21, conf: 82, status: 'pending' },
+            { asset: 'next.js', type: 'GitHub', ev: 0.08, alpha: -12.4, effort: 7, conf: 95, status: 'over' },
+        ];
+
+        const interventions = [
+            { id: 'INT-001', asset: 'dep-graph', type: 'API Launch', pred: 45.2, actual: 51.5, delta: '+6.3', status: 'verified' },
+            { id: 'INT-002', asset: 'telemetry', type: 'Packaging', pred: 32.8, actual: 28.4, delta: '-4.4', status: 'verified' },
+            { id: 'INT-003', asset: 'next.js', type: 'Documentation', pred: 0.8, actual: '---', delta: '---', status: 'pending' },
+            { id: 'INT-004', asset: 'finder', type: 'AI Integration', pred: 38.5, actual: 42.1, delta: '+3.6', status: 'verified' },
+            { id: 'INT-005', asset: 'monitor', type: 'Migration', pred: 12.3, actual: 8.7, delta: '-3.6', status: 'completed' },
+        ];
+
+        const alerts = [
+            { time: '12:42:15', message: 'New hidden infrastructure detected: wasm-compiler-toolchain', level: 'high' },
+            { time: '12:38:02', message: 'API Launch intervention verified: dep-graph +6.3 delta', level: 'low' },
+            { time: '12:35:47', message: 'Prediction accuracy dropped to 71.8%', level: 'medium' },
+            { time: '12:30:00', message: 'Mining batch complete: 23 new interventions extracted', level: 'low' },
+            { time: '12:28:33', message: 'High-risk asset: single-maintainer dependency with 5,000+ transitive deps', level: 'high' },
+        ];
+
+        const tickers = [
+            { symbol: 'ENGINEERING_ALPHA', value: '284.7', change: '+2.3', positive: true },
+            { symbol: 'INTERVENTIONS', value: '149', change: '+23', positive: true },
+            { symbol: 'HIDDEN_ASSETS', value: '847', change: '+12', positive: true },
+            { symbol: 'PREDICTION_ACC', value: '72.0%', change: '-0.4', positive: false },
+            { symbol: 'AVG_VALUE_DELTA', value: '2.45', change: '+0.12', positive: true },
+            { symbol: 'ASSETS_WATCHED', value: '2,341', change: '+45', positive: true },
+            { symbol: 'VERIFIED_OUTCOMES', value: '89', change: '+5', positive: true },
+            { symbol: 'PENDING_REVIEW', value: '23', change: '-2', positive: true },
+        ];
+
+        // ===== RENDER FUNCTIONS =====
+        function renderRadarTable() {
+            const tbody = document.querySelector('#radar-table tbody');
+            tbody.innerHTML = radarSignals.map(s => `
+                <tr>
+                    <td class="highlight">${s.asset}</td>
+                    <td>${s.type}</td>
+                    <td class="highlight">${s.ev.toFixed(2)}</td>
+                    <td class="${s.alpha > 0 ? 'positive' : 'negative'}">${s.alpha > 0 ? '+' : ''}${s.alpha}</td>
+                    <td>${s.effort}d</td>
+                    <td>${s.conf}%</td>
+                    <td class="${s.status === 'verified' ? 'positive' : s.status === 'pending' ? 'highlight' : 'negative'}">${s.status}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderInterventionsTable() {
+            const tbody = document.querySelector('#interventions-table tbody');
+            tbody.innerHTML = interventions.map(i => `
+                <tr>
+                    <td class="highlight">${i.id}</td>
+                    <td>${i.asset}</td>
+                    <td>${i.type}</td>
+                    <td>${i.pred}</td>
+                    <td>${i.actual}</td>
+                    <td class="${i.delta.startsWith('+') ? 'positive' : i.delta.startsWith('-') ? 'negative' : ''}">${i.delta}</td>
+                    <td class="${i.status === 'verified' ? 'positive' : i.status === 'pending' ? 'highlight' : ''}">${i.status}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderAlerts() {
+            const feed = document.getElementById('alerts-feed');
+            feed.innerHTML = alerts.map(a => `
+                <div class="alert-item ${a.level}">
+                    <span class="alert-time">${a.time}</span>
+                    <span class="alert-message">${a.message}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderTicker() {
+            const content = document.getElementById('ticker-content');
+            const items = [...tickers, ...tickers]; // Duplicate for seamless loop
+            content.innerHTML = items.map(t => `
+                <div class="ticker-item">
+                    <span class="ticker-symbol">${t.symbol}</span>
+                    <span class="ticker-value">${t.value}</span>
+                    <span class="ticker-change ${t.positive ? 'positive' : 'negative'}">${t.positive ? '+' : ''}${t.change}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderChart() {
+            const container = document.getElementById('alpha-chart');
+            const values = [15, 42, 28, 65, 38, 72, 45, 58, 33, 87, 22, 50, 41, 29, 63, 35, 48, 19, 55, 31];
+            const max = Math.max(...values);
+            container.innerHTML = values.map(v => `
+                <div class="chart-bar" style="height: ${(v / max * 100)}%" title="Alpha: ${v}"></div>
+            `).join('');
+        }
+
+        // ===== COMMAND LINE =====
+        const input = document.getElementById('terminal-input');
+        const status = document.getElementById('terminal-status');
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = input.value.trim().toLowerCase();
+                executeCommand(cmd);
+                input.value = '';
+            }
+        });
+
+        function executeCommand(cmd) {
+            status.textContent = 'Processing...';
+            
+            setTimeout(() => {
+                switch(cmd) {
+                    case 'help':
+                        alert('Commands: radar, alpha, mine, ledger, swipe, status, clear');
+                        break;
+                    case 'radar':
+                        window.location.href = '/radar';
+                        break;
+                    case 'alpha':
+                        window.location.href = '/alpha';
+                        break;
+                    case 'mine':
+                        window.location.href = '/mine';
+                        break;
+                    case 'ledger':
+                        window.location.href = '/ledger';
+                        break;
+                    case 'swipe':
+                        window.location.href = '/swipe';
+                        break;
+                    case 'status':
+                        alert('System: Online | Interventions: 149 | Accuracy: 72%');
+                        break;
+                    case 'clear':
+                        document.getElementById('alerts-feed').innerHTML = '';
+                        break;
+                    default:
+                        if (cmd) alert(`Unknown command: ${cmd}. Type 'help' for available commands.`);
+                }
+                status.textContent = 'Ready';
+            }, 200);
+        }
+
+        // ===== HOTKEYS =====
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            
+            switch(e.key) {
+                case 'F1': e.preventDefault(); window.location.href = '/radar'; break;
+                case 'F2': e.preventDefault(); window.location.href = '/alpha'; break;
+                case 'F3': e.preventDefault(); window.location.href = '/interventions'; break;
+                case 'F4': e.preventDefault(); window.location.href = '/mine'; break;
+                case 'F5': e.preventDefault(); window.location.href = '/ledger'; break;
+                case 'F6': e.preventDefault(); window.location.href = '/swipe'; break;
+                case '/': 
+                    e.preventDefault(); 
+                    input.focus(); 
+                    break;
+            }
+        });
+
+        // ===== INIT =====
+        renderRadarTable();
+        renderInterventionsTable();
+        renderAlerts();
+        renderTicker();
+        renderChart();
+
+        // Simulate live updates
+        setInterval(() => {
+            const randomSignal = radarSignals[Math.floor(Math.random() * radarSignals.length)];
+            randomSignal.ev += (Math.random() - 0.5) * 0.1;
+            renderRadarTable();
+        }, 5000);
+
+        setInterval(() => {
+            const now = new Date();
+            const time = now.toTimeString().split(' ')[0];
+            const feed = document.getElementById('alerts-feed');
+            const newAlert = document.createElement('div');
+            newAlert.className = 'alert-item low';
+            newAlert.innerHTML = `<span class="alert-time">${time}</span><span class="alert-message">System heartbeat: all systems operational</span>`;
+            feed.insertBefore(newAlert, feed.firstChild);
+            if (feed.children.length > 20) feed.removeChild(feed.lastChild);
+        }, 30000);
+    </script>
+</body>
+</html>
