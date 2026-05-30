@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catacomb Ledger - Institutional Audit Trail</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
+</head>
+<body>
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/radar">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/ledger" class="active">Ledger</a>
+            <a href="/swipe">Swipe</a>
+            <a href="/search">Search</a>
+            <a href="/live">Live</a>
+        </nav>
+    </div>
+
+    <div class="hero">
+        <h1 class="hero-title">Institutional Audit Ledger</h1>
+        <p class="hero-subtitle">Asset → Intervention → Prediction → Outcome → Verification. The trust layer.</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Records</div>
+            <div class="stat-value">149</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Verified Outcomes</div>
+            <div class="stat-value">89</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Avg Accuracy Score</div>
+            <div class="stat-value">72.4%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Prediction MAE</div>
+            <div class="stat-value">0.34</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Calibration Error</div>
+            <div class="stat-value">0.12</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Brier Score</div>
+            <div class="stat-value">0.21</div>
+        </div>
+    </div>
+
+    <div class="radar-grid">
+        <div class="radar-card">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">dependency-graph-analyzer</div>
+                    <div class="radar-asset-source">GitHub Repo</div>
+                </div>
+                <div class="radar-ev-badge">Verified</div>
+            </div>
+            
+            <span class="label label-hidden">Verified Outcome</span>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Record ID:</strong> INT-001-847</div>
+                <div class="radar-metric"><strong>Intervention:</strong> API Launch</div>
+                <div class="radar-metric"><strong>Predicted Value:</strong> 45.2</div>
+                <div class="radar-metric"><strong>Actual Value:</strong> 51.5</div>
+                <div class="radar-metric"><strong>Accuracy Score:</strong> 87.2%</div>
+                <div class="radar-metric"><strong>Verification Hash:</strong> a7f3c9d2</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Before State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 234 | Forks: 45 | Contributors: 3</div>
+                <div style="font-size: 12px; color: var(--light-stone);">No API surface | Documentation incomplete</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                <div style="font-size: 11px; color: var(--molten-gold); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">After State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 312 | Forks: 67 | Contributors: 5</div>
+                <div style="font-size: 12px; color: var(--light-stone);">REST API launched | Documentation complete</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Verification</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Status: <span style="color: var(--molten-gold);">Verified</span></div>
+                <div style="font-size: 12px; color: var(--light-stone);">Link: <a href="#" style="color: var(--forged-orange);">github.com/owner/repo/pull/123</a></div>
+                <div style="font-size: 11px; color: var(--warm-stone); margin-top: 4px;">Verified by: system | Timestamp: 2024-01-15T14:32:00Z</div>
+            </div>
+        </div>
+
+        <div class="radar-card">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">rust-telemetry-daemon</div>
+                    <div class="radar-asset-source">GitHub Repo</div>
+                </div>
+                <div class="radar-ev-badge">Verified</div>
+            </div>
+            
+            <span class="label label-hidden">Verified Outcome</span>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Record ID:</strong> INT-002-156</div>
+                <div class="radar-metric"><strong>Intervention:</strong> Packaging</div>
+                <div class="radar-metric"><strong>Predicted Value:</strong> 32.8</div>
+                <div class="radar-metric"><strong>Actual Value:</strong> 28.4</div>
+                <div class="radar-metric"><strong>Accuracy Score:</strong> 86.6%</div>
+                <div class="radar-metric"><strong>Verification Hash:</strong> b4e8d1f3</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Before State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 156 | Forks: 23 | Contributors: 2</div>
+                <div style="font-size: 12px; color: var(--light-stone);">No package distribution | Build system manual</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                <div style="font-size: 11px; color: var(--molten-gold); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">After State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 189 | Forks: 34 | Contributors: 3</div>
+                <div style="font-size: 12px; color: var(--light-stone);">Published to crates.io | CI/CD automated</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Verification</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Status: <span style="color: var(--molten-gold);">Verified</span></div>
+                <div style="font-size: 12px; color: var(--light-stone);">Link: <a href="#" style="color: var(--forged-orange);">github.com/owner/repo/pull/456</a></div>
+                <div style="font-size: 11px; color: var(--warm-stone); margin-top: 4px;">Verified by: system | Timestamp: 2024-01-18T09:15:00Z</div>
+            </div>
+        </div>
+
+        <div class="radar-card">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">next.js</div>
+                    <div class="radar-asset-source">GitHub Repo</div>
+                </div>
+                <div class="radar-ev-badge crimson">Pending</div>
+            </div>
+            
+            <span class="label label-fair">Unverified</span>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Record ID:</strong> INT-003-001</div>
+                <div class="radar-metric"><strong>Intervention:</strong> Documentation</div>
+                <div class="radar-metric"><strong>Predicted Value:</strong> 0.8</div>
+                <div class="radar-metric"><strong>Actual Value:</strong> Pending</div>
+                <div class="radar-metric"><strong>Accuracy Score:</strong> N/A</div>
+                <div class="radar-metric"><strong>Verification Hash:</strong> c5f9e2a4</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Before State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 98,234 | Forks: 18,456 | Contributors: 1,523</div>
+                <div style="font-size: 12px; color: var(--light-stone);">Documentation comprehensive | API surface stable</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(220, 20, 60, 0.2);">
+                <div style="font-size: 11px; color: var(--crimson-risk); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">After State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Pending verification</div>
+                <div style="font-size: 12px; color: var(--light-stone);">Awaiting outcome measurement</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(220, 20, 60, 0.3);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Verification</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Status: <span style="color: var(--crimson-risk);">Pending</span></div>
+                <div style="font-size: 12px; color: var(--light-stone);">Link: <a href="#" style="color: var(--forged-orange);">github.com/owner/repo/pull/789</a></div>
+                <div style="font-size: 11px; color: var(--warm-stone); margin-top: 4px;">Created: 2024-01-20T16:45:00Z | Awaiting verification</div>
+            </div>
+        </div>
+
+        <div class="radar-card">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">hidden-asset-finder</div>
+                    <div class="radar-asset-source">GitHub Repo</div>
+                </div>
+                <div class="radar-ev-badge">Verified</div>
+            </div>
+            
+            <span class="label label-hidden">Verified Outcome</span>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Record ID:</strong> INT-004-234</div>
+                <div class="radar-metric"><strong>Intervention:</strong> AI Integration</div>
+                <div class="radar-metric"><strong>Predicted Value:</strong> 38.5</div>
+                <div class="radar-metric"><strong>Actual Value:</strong> 42.1</div>
+                <div class="radar-metric"><strong>Accuracy Score:</strong> 90.7%</div>
+                <div class="radar-metric"><strong>Verification Hash:</strong> d6g0f3b5</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Before State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 89 | Forks: 12 | Contributors: 1</div>
+                <div style="font-size: 12px; color: var(--light-stone);">No AI integration | Manual analysis only</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                <div style="font-size: 11px; color: var(--molten-gold); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">After State</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Stars: 134 | Forks: 21 | Contributors: 2</div>
+                <div style="font-size: 12px; color: var(--light-stone);">LLM integration added | Automated analysis</div>
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: rgba(26, 26, 36, 0.5); border-radius: 6px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <div style="font-size: 11px; color: var(--warm-stone); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Verification</div>
+                <div style="font-size: 12px; color: var(--light-stone); margin-bottom: 4px;">Status: <span style="color: var(--molten-gold);">Verified</span></div>
+                <div style="font-size: 12px; color: var(--light-stone);">Link: <a href="#" style="color: var(--forged-orange);">github.com/owner/repo/pull/321</a></div>
+                <div style="font-size: 11px; color: var(--warm-stone); margin-top: 4px;">Verified by: system | Timestamp: 2024-01-22T11:28:00Z</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

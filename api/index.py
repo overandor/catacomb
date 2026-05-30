@@ -189,6 +189,11 @@ def interventions_page():
     """Intervention Intelligence - Ranked by value per engineering day."""
     return render_template('interventions.html')
 
+@app.route('/ledger')
+def ledger_page():
+    """Institutional Audit Ledger - Trust layer."""
+    return render_template('ledger.html')
+
 @app.route('/api/radar/summary')
 def radar_summary_api():
     """Get radar summary statistics."""
