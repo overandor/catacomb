@@ -628,13 +628,14 @@
     <div class="sdk-section">
         <div class="sdk-header">
             <h2>SDK Integration</h2>
-            <p>Programmatic access to Catacomb intelligence. Three SDKs for every use case.</p>
+            <p>Programmatic access to Catacomb intelligence. Four SDKs for every use case.</p>
         </div>
         
         <div class="sdk-tabs">
             <button class="sdk-tab active" data-tab="proof">Proof of Inference</button>
             <button class="sdk-tab" data-tab="embeddings">Asset Embeddings</button>
             <button class="sdk-tab" data-tab="zk">ZK Collateral</button>
+            <button class="sdk-tab" data-tab="api">REST API</button>
         </div>
         
         <div class="sdk-content">
@@ -780,6 +781,62 @@ is_valid, message, unlocked_position = sdk.verify_and_unlock(
 )
 
 print(f"Unlocked: {is_valid}")</code></pre>
+                </div>
+            </div>
+            
+            <div class="sdk-pane" id="api">
+                <div class="sdk-description">
+                    <h3>REST API</h3>
+                    <p>Full REST API for programmatic access to all Catacomb features. Stats, interventions, assets, search, and dashboard endpoints.</p>
+                </div>
+                <div class="code-window">
+                    <div class="code-header">
+                        <span class="code-title">api_example.py</span>
+                        <button class="copy-btn" onclick="copyCode('api-code')">Copy</button>
+                    </div>
+                    <pre class="code-body" id="api-code"><code class="language-python">import requests
+
+BASE_URL = "https://catacomb-eight.vercel.app/api/v1"
+
+# Get system statistics
+response = requests.get(f"{BASE_URL}/stats")
+stats = response.json()
+print(f"Verified Interventions: {stats['verified_interventions']}")
+print(f"Prediction Accuracy: {stats['prediction_accuracy']}%")
+
+# Search for assets
+response = requests.get(f"{BASE_URL}/search", params={
+    "q": "dependency graph",
+    "category": "repository"
+})
+results = response.json()
+print(f"Found {len(results['assets'])} assets")
+
+# Get paginated interventions
+response = requests.get(f"{BASE_URL}/interventions", params={
+    "page": 1,
+    "limit": 10,
+    "status": "verified"
+})
+interventions = response.json()
+for intervention in interventions['data']:
+    print(f"{intervention['asset_id']}: {intervention['intervention_type']}")
+
+# Get dashboard summary
+response = requests.get(f"{BASE_URL}/dashboard/summary")
+dashboard = response.json()
+print(f"Engineering Alpha: {dashboard['metrics']['engineering_alpha']}")
+print(f"Hidden Infrastructure: {dashboard['metrics']['hidden_infrastructure']}")
+
+# Generate proof of inference
+response = requests.post(f"{BASE_URL}/inference/proof", json={
+    "model": "llama3.1",
+    "prompt": "Analyze this code",
+    "response": "The code is secure",
+    "store_in_ledger": True
+})
+proof = response.json()
+print(f"Proof ID: {proof['proof_id']}")</code></pre>
                 </div>
             </div>
         </div>
