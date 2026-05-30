@@ -65,7 +65,29 @@
                 { id: 'competency', label: 'Competency Graph' },
             ];
             
-            const allItems = [...radarItems, ...underwriterItems, ...mineItems, { id: 'live', label: 'Live' }];
+            const liveItem = { id: 'live', label: 'Live' };
+
+            // Filter items based on user role
+            const getVisibleItems = () => {
+                if (!userRole) {
+                    // Public tier: only radar items + live
+                    return [...radarItems, liveItem];
+                }
+                
+                if (userRole === 'professional') {
+                    // Professional tier: radar + underwriter + live
+                    return [...radarItems, ...underwriterItems, liveItem];
+                }
+                
+                if (userRole === 'admin') {
+                    // Admin tier: all items
+                    return [...radarItems, ...underwriterItems, ...mineItems, liveItem];
+                }
+                
+                return [...radarItems, liveItem];
+            };
+
+            const visibleItems = getVisibleItems();
 
             return (
                 <header className="border-b border-orange/10 backdrop-blur-sm bg-obsidian/80">
@@ -83,10 +105,7 @@
                                 </div>
                             </div>
                             <nav className="flex items-center gap-1">
-                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-stone/20">
-                                    <span className="text-xs text-stone">Radar</span>
-                                </div>
-                                {radarItems.map((item,i) => (
+                                {visibleItems.map((item) => (
                                     <button
                                         key={item.id}
                                         onClick={() => setCurrentView(item.id)}
@@ -99,53 +118,14 @@
                                         {item.label}
                                     </button>
                                 ))}
-                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-orange/20">
-                                    <span className="text-xs text-orange">Underwriter</span>
-                                </div>
-                                {underwriterItems.map((item,i) => (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => setCurrentView(item.id)}
-                                        className={`nav-item px-3 py-2 text-sm font-medium transition-all ${
-                                            currentView === item.id
-                                                ? 'text-orange active'
-                                                : 'text-stone hover:text-warm-white'
-                                        }`}
-                                    >
-                                        {item.label}
-                                    </button>
-                                ))}
-                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-gold/20">
-                                    <span className="text-xs text-gold">Mine</span>
-                                </div>
-                                {mineItems.map((item,i) => (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => setCurrentView(item.id)}
-                                        className={`nav-item px-3 py-2 text-sm font-medium transition-all ${
-                                            currentView === item.id
-                                                ? 'text-orange active'
-                                                : 'text-stone hover:text-warm-white'
-                                        }`}
-                                    >
-                                        {item.label}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => setCurrentView('live')}
-                                    className={`nav-item px-3 py-2 text-sm font-medium transition-all ${
-                                        currentView === 'live'
-                                            ? 'text-orange active'
-                                            : 'text-stone hover:text-warm-white'
-                                    }`}
-                                >
-                                    Live
-                                </button>
+                                {userRole && (
+                                    <div className="ml-4 flex items-center gap-2">
+                                        <span className="text-xs text-stone">
+                                            {userRole === 'admin' ? '🔑 Admin' : userRole === 'professional' ? '⭐ Professional' : '👤 Public'}
+                                        </span>
+                                    </div>
+                                )}
                             </nav>
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-orange pulse-orange"></div>
-                                <span className="text-xs text-stone font-mono">LIVE</span>
-                            </div>
                         </div>
                     </div>
                 </header>
@@ -1710,10 +1690,62 @@
             );
         }
 
+        // Access Denied View
+        function AccessDeniedView() {
+            return (
+                <div className="max-w-7xl mx-auto px-6 py-8">
+                    <div className="card-premium p-12 text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-crimson/20 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-crimson" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-crimson mb-2">Access Denied</h2>
+                        <p className="text-stone mb-6">This page requires a higher tier subscription.</p>
+                        <div className="space-y-2 text-sm text-stone">
+                            <p><span className="text-orange font-medium">Radar Tier (Public):</span> Radar, Alpha, Search, Swipe, Live</p>
+                            <p><span className="text-orange font-medium">Underwriter Tier (Professional):</span> Underwriter, Asset Desk, Review Cards, Portfolio</p>
+                            <p><span className="text-orange font-medium">Mine Tier (Admin):</span> Mine, Interventions, Ledger, Competency</p>
+                        </div>
+                        <button 
+                            onClick={() => window.location.href = '/login'}
+                            className="mt-6 px-6 py-2 bg-orange/20 border border-orange/30 text-orange rounded hover:bg-orange/30 transition-all"
+                        >
+                            Login to Upgrade
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         // Main App
         function App() {
             const [currentView, setCurrentView] = useState('radar');
+            const [userRole, setUserRole] = useState(null);
+            const [userLoading, setUserLoading] = useState(true);
             const views = ['radar','alpha','search','swipe','underwriter','asset-desk','review-cards','portfolio','mine','interventions','ledger','competency','live'];
+
+            // Fetch user role on mount
+            useEffect(() => {
+                async function fetchUserRole() {
+                    const token = getToken();
+                    if (token) {
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/user`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            const data = await res.json();
+                            if (data.authenticated) {
+                                setUserRole(data.role);
+                            }
+                        } catch (err) {
+                            console.error('Failed to fetch user role:', err);
+                        }
+                    }
+                    setUserLoading(false);
+                }
+                fetchUserRole();
+            }, []);
 
             useEffect(() => {
                 function onKey(e) {
@@ -1724,22 +1756,44 @@
                 return () => window.removeEventListener('keydown', onKey);
             }, []);
 
+            // Check if user can access current view
+            const canAccessView = (view) => {
+                if (!userRole) return view === 'radar' || view === 'alpha' || view === 'search' || view === 'swipe' || view === 'live';
+                
+                const radarPages = ['radar', 'alpha', 'search', 'swipe', 'live'];
+                const underwriterPages = ['underwriter', 'asset-desk', 'review-cards', 'portfolio'];
+                const minePages = ['mine', 'interventions', 'ledger', 'competency'];
+                
+                if (radarPages.includes(view)) return true;
+                if (underwriterPages.includes(view)) return userRole === 'professional' || userRole === 'admin';
+                if (minePages.includes(view)) return userRole === 'admin';
+                
+                return false;
+            };
+
+            // Redirect if user cannot access current view
+            useEffect(() => {
+                if (!userLoading && userRole && !canAccessView(currentView)) {
+                    setCurrentView('radar');
+                }
+            }, [currentView, userRole, userLoading]);
+
             return (
                 <div className="min-h-screen flex flex-col">
-                    <Header currentView={currentView} setCurrentView={setCurrentView} />
+                    <Header currentView={currentView} setCurrentView={setCurrentView} userRole={userRole} />
                     <main className="flex-1">
                         {currentView === 'radar' && <RadarView />}
                         {currentView === 'alpha' && <AlphaView />}
                         {currentView === 'search' && <SearchView />}
                         {currentView === 'swipe' && <SwipeView />}
-                        {currentView === 'underwriter' && <UnderwriterView />}
-                        {currentView === 'asset-desk' && <AssetDeskView />}
-                        {currentView === 'review-cards' && <ReviewCardsView />}
-                        {currentView === 'portfolio' && <PortfolioView />}
-                        {currentView === 'mine' && <MineView />}
-                        {currentView === 'interventions' && <InterventionView />}
-                        {currentView === 'ledger' && <LedgerView />}
-                        {currentView === 'competency' && <CompetencyGraphView />}
+                        {currentView === 'underwriter' && (canAccessView('underwriter') ? <UnderwriterView /> : <AccessDeniedView />)}
+                        {currentView === 'asset-desk' && (canAccessView('asset-desk') ? <AssetDeskView /> : <AccessDeniedView />)}
+                        {currentView === 'review-cards' && (canAccessView('review-cards') ? <ReviewCardsView /> : <AccessDeniedView />)}
+                        {currentView === 'portfolio' && (canAccessView('portfolio') ? <PortfolioView /> : <AccessDeniedView />)}
+                        {currentView === 'mine' && (canAccessView('mine') ? <MineView /> : <AccessDeniedView />)}
+                        {currentView === 'interventions' && (canAccessView('interventions') ? <InterventionView /> : <AccessDeniedView />)}
+                        {currentView === 'ledger' && (canAccessView('ledger') ? <LedgerView /> : <AccessDeniedView />)}
+                        {currentView === 'competency' && (canAccessView('competency') ? <CompetencyGraphView /> : <AccessDeniedView />)}
                         {currentView === 'live' && <LiveView />}
                     </main>
                     <footer className="border-t border-orange/10 py-4 px-6">
