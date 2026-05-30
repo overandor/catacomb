@@ -112,6 +112,35 @@ class InterventionClassifier:
         ]
     }
     
+    # Low-value patterns to filter out
+    LOW_VALUE_PATTERNS = [
+        r"version bump", r"v\d+\.\d+\.\d+", r"bump version", r"update version",
+        r"changelog", r"readme.*typo", r"typo", r"spelling",
+        r"lint", r"format", r"whitespace", r"space",
+        r"minor", r"trivial", r"small", r"tiny",
+        r"test.*fix", r"test.*update", r"test.*add"
+    ]
+    
+    @classmethod
+    def is_low_value(cls, title: str, description: str = "") -> bool:
+        """
+        Check if an intervention is low-value (version bumps, typos, etc.).
+        
+        Args:
+            title: PR/issue title
+            description: PR/issue description
+            
+        Returns:
+            True if low-value, False otherwise
+        """
+        text = f"{title} {description}".lower()
+        
+        for pattern in cls.LOW_VALUE_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        
+        return False
+    
     @classmethod
     def classify(cls, title: str, description: str = "", files_changed: List[str] = None) -> str:
         """
@@ -307,6 +336,11 @@ class GitHubInterventionMiner:
         # Classify intervention type
         title = pr_data.get("title", "")
         body = pr_details.get("body", "") if pr_details else ""
+        
+        # Filter out low-value interventions
+        if self.classifier.is_low_value(title, body):
+            return None
+        
         intervention_type = self.classifier.classify(title, body, files_changed)
         
         # Fetch metrics before and after (estimate)
