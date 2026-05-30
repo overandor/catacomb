@@ -44,7 +44,12 @@ mining_status = {"in_progress": False, "progress": 0, "total": 0, "message": ""}
 
 @app.route('/')
 def index():
-    """Dashboard showing all interventions."""
+    """Redirect to Radar as default landing."""
+    return redirect('/radar')
+
+@app.route('/dashboard')
+def dashboard():
+    """Legacy dashboard showing all interventions."""
     import sqlite3
     conn = sqlite3.connect(ledger.db_path)
     cursor = conn.cursor()

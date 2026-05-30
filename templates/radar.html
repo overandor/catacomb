@@ -3,341 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catacomb Radar - Hidden Infrastructure</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-            color: #e0e0e0;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .header h1 {
-            font-size: 32px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .nav {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .nav a {
-            color: #888;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .nav a:hover {
-            color: #fff;
-            background: rgba(255,255,255,0.1);
-            transform: translateY(-2px);
-        }
-        
-        .nav a.active {
-            color: #fff;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-        
-        .stat-card {
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            padding: 24px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(102, 126, 234, 0.3);
-        }
-        
-        .stat-card h3 {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-        
-        .stat-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .radar-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-        
-        .signal-card {
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            padding: 24px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .signal-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .signal-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border-color: rgba(102, 126, 234, 0.3);
-        }
-        
-        .signal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }
-        
-        .signal-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 4px;
-        }
-        
-        .signal-type {
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .signal-ev {
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .signal-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .metric {
-            font-size: 13px;
-            color: #888;
-        }
-        
-        .metric strong {
-            color: #e0e0e0;
-        }
-        
-        .intervention-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            background: rgba(102, 126, 234, 0.2);
-            color: #667eea;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: capitalize;
-            margin-bottom: 12px;
-        }
-        
-        .evidence-list {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .evidence-list li {
-            font-size: 12px;
-            color: #888;
-            padding: 4px 0;
-            padding-left: 16px;
-            position: relative;
-        }
-        
-        .evidence-list li::before {
-            content: '→';
-            position: absolute;
-            left: 0;
-            color: #667eea;
-        }
-        
-        .confidence-bar {
-            height: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            margin-top: 12px;
-            overflow: hidden;
-        }
-        
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 2px;
-            transition: width 0.3s ease;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-            color: #888;
-        }
-        
-        .empty-state h3 {
-            font-size: 24px;
-            margin-bottom: 12px;
-            color: #e0e0e0;
-        }
-        
-        @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .header {
-                flex-direction: column;
-                gap: 20px;
-                align-items: flex-start;
-            }
-            
-            .nav {
-                flex-wrap: wrap;
-            }
-            
-            .radar-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <title>Catacomb Radar - Hidden Software Alpha</title>
+    <link rel="stylesheet" href="/static/catacomb.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Catacomb Radar</h1>
-            <nav class="nav">
-                <a href="/">Dashboard</a>
-                <a href="/capture">Capture</a>
-                <a href="/quick_capture">Quick</a>
-                <a href="/mine">Mine</a>
-                <a href="/radar" class="active">Radar</a>
-                <a href="/leaderboard">Leaderboard</a>
-                <a href="/stats">Stats</a>
-            </nav>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Signals</h3>
-                <div class="value">{{ summary.total_signals if summary else 0 }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Alpha Universe</h3>
-                <div class="value">{{ summary.universe_stats.alpha if summary else 0 }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Avg EV/Day</h3>
-                <div class="value">{{ "%.2f"|format(summary.avg_expected_value_per_day) if summary else 0 }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Avg Confidence</h3>
-                <div class="value">{{ "%.0f"|format((summary.avg_confidence * 100) if summary else 0) }}%</div>
-            </div>
-        </div>
-
-        {% if signals %}
-        <div class="radar-grid">
-            {% for signal in signals %}
-            <div class="signal-card">
-                <div class="signal-header">
-                    <div>
-                        <div class="signal-name">{{ signal.asset_name }}</div>
-                        <div class="signal-type">{{ signal.asset_type }}</div>
-                    </div>
-                    <div class="signal-ev">{{ "%.2f"|format(signal.expected_value_per_day) }}</div>
-                </div>
-                
-                <div class="intervention-badge">{{ signal.best_intervention }}</div>
-                
-                <div class="signal-metrics">
-                    <div class="metric"><strong>Effort:</strong> {{ signal.effort_days_estimate }} days</div>
-                    <div class="metric"><strong>Value Delta:</strong> {{ "%.1f"|format(signal.value_delta) }}</div>
-                    <div class="metric"><strong>Bus Factor:</strong> {{ signal.bus_factor }}</div>
-                    <div class="metric"><strong>Dependencies:</strong> {{ signal.transitive_dependencies }}</div>
-                </div>
-                
-                {% if signal.evidence %}
-                <ul class="evidence-list">
-                    {% for evidence in signal.evidence %}
-                    <li>{{ evidence }}</li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-                
-                <div class="confidence-bar">
-                    <div class="confidence-fill" style="width: {{ (signal.confidence * 100) }}%"></div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <h3>No Radar Signals Yet</h3>
-            <p>Run the GitHub miner to discover hidden infrastructure opportunities.</p>
-        </div>
-        {% endif %}
+    <div class="nav-container">
+        <div class="nav-logo">Catacomb</div>
+        <nav class="nav-links">
+            <a href="/radar" class="active">Radar</a>
+            <a href="/alpha">Alpha</a>
+            <a href="/interventions">Interventions</a>
+            <a href="/mine">Mine</a>
+            <a href="/ledger">Ledger</a>
+            <a href="/swipe">Swipe</a>
+            <a href="/search">Search</a>
+            <a href="/live">Live</a>
+        </nav>
     </div>
+
+    <div class="hero">
+        <h1 class="hero-title">Catacomb Radar</h1>
+        <p class="hero-subtitle">Hidden software alpha, ranked by value unlocked per engineering day.</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Engineering Alpha Available Today</div>
+            <div class="stat-value">{{ "%.1f"|format((summary.avg_expected_value_per_day * summary.total_signals) if summary else 0) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Verified Interventions</div>
+            <div class="stat-value">{{ summary.total_signals if summary else 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Hidden Infrastructure Assets</div>
+            <div class="stat-value">{{ summary.universe_stats.alpha if summary else 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Average Value Delta</div>
+            <div class="stat-value">{{ "%.1f"|format(summary.avg_expected_value_per_day if summary else 0) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Prediction Accuracy</div>
+            <div class="stat-value">{{ "%.0f"|format((summary.avg_confidence * 100) if summary else 0) }}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Assets Under Watch</div>
+            <div class="stat-value">{{ summary.total_signals if summary else 0 }}</div>
+        </div>
+    </div>
+
+    {% if signals %}
+    <div class="radar-grid">
+        {% for signal in signals %}
+        <div class="radar-card {% if signal.expected_value_per_day > 1.5 %}high-opportunity{% endif %} {% if signal.unresolved_security_backlog > 0 %}risk{% endif %}">
+            <div class="radar-header">
+                <div>
+                    <div class="radar-asset-name">{{ signal.asset_name }}</div>
+                    <div class="radar-asset-source">{{ signal.asset_type }}</div>
+                </div>
+                <div class="radar-ev-badge">{{ "%.2f"|format(signal.expected_value_per_day) }}</div>
+            </div>
+            
+            <div class="radar-intervention">{{ signal.best_intervention }}</div>
+            
+            <div class="radar-metrics">
+                <div class="radar-metric"><strong>Hidden Infrastructure Score:</strong> {{ "%.1f"|format(signal.signal_strength * 100) }}</div>
+                <div class="radar-metric"><strong>Innovation Alpha:</strong> {{ "%.2f"|format(signal.value_delta) }}</div>
+                <div class="radar-metric"><strong>Expected Value Delta:</strong> {{ "%.1f"|format(signal.value_delta) }}</div>
+                <div class="radar-metric"><strong>Value Per Day:</strong> {{ "%.2f"|format(signal.expected_value_per_day) }}</div>
+                <div class="radar-metric"><strong>Effort Required:</strong> {{ signal.effort_days_estimate }} days</div>
+                <div class="radar-metric"><strong>Evidence Strength:</strong> {{ "%.0f"|format(signal.confidence * 100) }}%</div>
+                <div class="radar-metric"><strong>Risk Level:</strong> {% if signal.unresolved_security_backlog > 0 %}High{% else %}Low{% endif %}</div>
+                <div class="radar-metric"><strong>Verification Status:</strong> Pending</div>
+            </div>
+            
+            {% if signal.evidence %}
+            <ul class="radar-evidence">
+                {% for evidence in signal.evidence %}
+                <li>{{ evidence }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            
+            <div class="radar-confidence">
+                <div class="radar-confidence-fill" style="width: {{ (signal.confidence * 100) }}%"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="container" style="text-align: center; padding: 80px 20px; color: var(--warm-stone);">
+        <h3 style="font-size: 24px; margin-bottom: 12px; color: #fff;">No Radar Signals Yet</h3>
+        <p>Run the GitHub miner to discover hidden infrastructure opportunities.</p>
+    </div>
+    {% endif %}
 </body>
 </html>
