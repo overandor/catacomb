@@ -32,6 +32,7 @@ from collateral_packet import RiskRegister
 from lender_packet import LenderPacketGenerator
 from buyer_packet import BuyerPacketGenerator
 from developer_asset_underwriter import DeveloperAssetUnderwriter
+from proof_of_inference import get_proof_sdk
 
 # Configure logging
 logging.basicConfig(
@@ -99,7 +100,10 @@ def _safe_error_response(message: str, status_code: int = 500, log_exception: bo
 
 # Base directory for absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
+if os.environ.get('VERCEL'):
+    DB_PATH = '/tmp/outcome_ledger.db'
+else:
+    DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
 
 # Global orchestrator instance
 orchestrator = None
@@ -1561,6 +1565,194 @@ def underwriter_dashboard():
     except Exception as e:
         logger.error(f"Underwriter dashboard error: {e}")
         return jsonify({"error": str(e), "portfolio_summary": {}}), 500
+
+
+# ============================================================================
+# V1 API ENDPOINTS (production contract)
+# ============================================================================
+
+@app.route('/api/v1/search', methods=['GET'])
+def api_v1_search():
+    """Universal search across interventions and assets."""
+    try:
+        query = request.args.get('q', '').lower()
+        category = request.args.get('category', 'all')
+
+        results = {"repos": [], "interventions": [], "assets": []}
+
+        if category in ('all', 'interventions'):
+            records = outcome_ledger.get_interventions(limit=200)
+            for r in records:
+                text = f"{r.get('asset_id','')} {r.get('intervention_type','')} {r.get('status','')}".lower()
+                if not query or query in text:
+                    results['interventions'].append({
+                        "id": r.get('record_id'),
+                        "asset": r.get('asset_id'),
+                        "type": r.get('intervention_type'),
+                        "status": r.get('status'),
+                        "created": r.get('created_at'),
+                        "predicted_value": r.get('predicted_value')
+                    })
+
+        if category in ('all', 'repos', 'assets'):
+            records = outcome_ledger.get_interventions(limit=200)
+            seen = set()
+            for r in records:
+                aid = r.get('asset_id')
+                if aid and aid not in seen:
+                    seen.add(aid)
+                    text = f"{aid} {r.get('asset_name','')}".lower()
+                    if not query or query in text:
+                        results['assets'].append({
+                            "id": aid,
+                            "name": r.get('asset_name') or aid.split('/')[-1] if '/' in str(aid) else str(aid),
+                            "type": r.get('asset_type', 'unknown'),
+                            "interventions": 0
+                        })
+
+        total = len(results['assets']) + len(results['interventions'])
+        return jsonify({"query": query, "category": category, "total_results": total, "results": results})
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        return _safe_error_response("search_failed")
+
+
+@app.route('/api/v1/repo/ingest', methods=['POST'])
+def api_v1_repo_ingest():
+    """Ingest a new GitHub repo and store KPIs."""
+    try:
+        data = request.get_json() or {}
+        owner = data.get('owner')
+        repo = data.get('repo')
+        if not owner or not repo:
+            return jsonify({"error": "Required: owner, repo"}), 400
+
+        orch = get_orchestrator()
+        metrics = orch.analyze_repo(owner, repo)
+
+        if "error" in metrics:
+            return jsonify({"error": metrics["error"]}), 400
+
+        record_id = outcome_ledger.create_intervention(
+            asset_id=f"github:{owner}/{repo}",
+            asset_type="github_repo",
+            asset_name=repo,
+            developer_id=f"github:{owner}",
+            developer_username=owner,
+            before_state=metrics,
+            intervention_type="asset_discovery",
+            intervention_description=f"Ingested repo {owner}/{repo}",
+            planned_effort_days=0,
+            predicted_value=0,
+            predicted_probability=0.5,
+            predicted_risk=0.0,
+            predicted_outcome={"value": 0}
+        )
+
+        return jsonify({"status": "ingested", "repo": f"{owner}/{repo}", "record_id": record_id, "metrics": metrics})
+    except Exception as e:
+        logger.error(f"Repo ingest failed: {e}")
+        return _safe_error_response("repo_ingest_failed")
+
+
+@app.route('/api/v1/inference/proof', methods=['POST'])
+def api_v1_inference_proof():
+    """Generate a verifiable proof of LLM inference."""
+    try:
+        data = request.get_json() or {}
+        if not data or 'model' not in data or 'prompt' not in data or 'response' not in data:
+            return jsonify({"error": "Required: model, prompt, response"}), 400
+
+        poi = get_proof_sdk()
+        proof = poi.generate_proof(
+            model=data['model'],
+            prompt=data['prompt'],
+            response=data['response'],
+            metadata=data.get('metadata', {}),
+            latency_ms=data.get('latency_ms')
+        )
+
+        if data.get('store_in_ledger'):
+            record_id = poi.store_proof(proof, outcome_ledger)
+            proof['stored_record_id'] = record_id
+
+        return jsonify(proof)
+    except Exception as e:
+        logger.error(f"Proof generation failed: {e}")
+        return _safe_error_response("proof_generation_failed")
+
+
+@app.route('/api/v1/proof/<proof_id>/verify', methods=['GET', 'POST'])
+def api_v1_verify_proof(proof_id):
+    """Verify a proof of inference by ID or provided proof data."""
+    try:
+        poi = get_proof_sdk()
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            if not data or 'proof' not in data:
+                return jsonify({"error": "Provide proof in request body"}), 400
+            proof = data['proof']
+        else:
+            proof = poi.get_proof_by_id(proof_id, outcome_ledger)
+            if not proof:
+                return jsonify({"error": "Proof not found"}), 404
+
+        result = poi.verify_proof(proof)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Proof verification failed: {e}")
+        return _safe_error_response("proof_verification_failed")
+
+
+@app.route('/api/v1/dashboard/summary', methods=['GET'])
+def api_v1_dashboard_summary():
+    """Real-time dashboard summary."""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT COUNT(*) FROM interventions")
+        total_interventions = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM interventions WHERE verification_status = ?", (VerificationStatus.VERIFIED.value,))
+        verified = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(DISTINCT asset_id) FROM interventions")
+        total_assets = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(DISTINCT developer_id) FROM interventions WHERE developer_id IS NOT NULL")
+        total_developers = cursor.fetchone()[0]
+
+        conn.close()
+
+        return jsonify({
+            "total_interventions": total_interventions,
+            "verified_interventions": verified,
+            "total_assets": total_assets,
+            "total_developers": total_developers,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Dashboard summary failed: {e}")
+        return _safe_error_response("dashboard_summary_failed")
+
+
+# ============================================================================
+# STRUCTURED JSON ERROR HANDLERS
+# ============================================================================
+
+@app.errorhandler(404)
+def handle_404(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Not found", "path": request.path, "status": "error"}), 404
+    return render_template('landing.html'), 404
+
+@app.errorhandler(500)
+def handle_500(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+    return render_template('landing.html'), 500
 
 
 if __name__ == "__main__":
