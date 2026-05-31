@@ -8,7 +8,6 @@ from novelty_agent import NoveltyAgent
 from market_demand_agent import MarketDemandAgent
 from revival_agent import RevivalAgent
 from strategy_agent import StrategyAgent
-from ml_prediction_agent import MLPredictionAgent
 from trajectory_agent import TrajectoryAgent
 from utility_agent import UtilityAgent
 from venture_agent import VentureAgent
@@ -48,7 +47,14 @@ class OpportunityLayer:
         self.trajectory = TrajectoryAgent()
         self.utility = UtilityAgent()
         self.venture = VentureAgent()
-        self.ml_prediction = MLPredictionAgent() if use_ml else None
+        if use_ml:
+            try:
+                from ml_prediction_agent import MLPredictionAgent
+                self.ml_prediction = MLPredictionAgent()
+            except ImportError:
+                self.ml_prediction = None
+        else:
+            self.ml_prediction = None
         self.use_ml = use_ml
     
     def analyze(self, repo_data: Dict[str, Any]) -> Dict[str, Any]:
