@@ -1,10 +1,19 @@
-"""Outcome Ledger v2 - Closed-loop prediction system with SQLite storage."""
+"""Outcome Ledger v2 - Closed-loop prediction system with SQLite/Postgres storage."""
 import sqlite3
 import json
 import uuid
+import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from enum import Enum
+
+# Try to import psycopg2 for Postgres support
+try:
+    import psycopg2
+    from psycopg2 import sql
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 
 class InterventionStatus(Enum):
@@ -24,14 +33,27 @@ class VerificationStatus(Enum):
 class OutcomeLedger:
     """Closed-loop system for tracking predictions, interventions, and outcomes."""
     
-    def __init__(self, db_path: str = "outcome_ledger.db"):
+    def __init__(self, db_path: str = "outcome_ledger.db", database_url: str = None):
         self.db_path = db_path
+        self.database_url = database_url or os.environ.get('DATABASE_URL')
+        self.use_postgres = bool(self.database_url and POSTGRES_AVAILABLE)
         self._init_db()
+    
+    def _get_connection(self):
+        """Get database connection (SQLite or Postgres)."""
+        if self.use_postgres:
+            return psycopg2.connect(self.database_url)
+        else:
+            return sqlite3.connect(self.db_path)
     
     def _init_db(self):
         """Initialize SQLite database with schema."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+        except Exception as e:
+            print(f"Warning: Could not initialize database: {e}")
+            return
         
         # Interventions table
         cursor.execute("""

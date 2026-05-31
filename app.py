@@ -820,6 +820,12 @@ def discover_promising_repos():
     try:
         import sqlite3
         import json
+        
+        # Check if database exists
+        if not os.path.exists(DB_PATH):
+            logger.warning(f"Database not found at {DB_PATH}, returning empty alpha")
+            return jsonify({"data": {"records": []}, "total": 0})
+        
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -1046,6 +1052,17 @@ def get_metrics():
     try:
         # Get intervention count from outcome ledger
         import sqlite3
+        
+        # Check if database exists
+        if not os.path.exists(DB_PATH):
+            logger.warning(f"Database not found at {DB_PATH}, returning zero counts")
+            return jsonify({
+                "total_interventions": 0,
+                "verified_interventions": 0,
+                "pending_interventions": 0,
+                "failed_interventions": 0
+            })
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
@@ -1096,6 +1113,12 @@ def get_ledger():
     """Get intervention ledger records."""
     try:
         import sqlite3
+        
+        # Check if database exists
+        if not os.path.exists(DB_PATH):
+            logger.warning(f"Database not found at {DB_PATH}, returning empty interventions")
+            return jsonify({"data": {"records": []}, "total": 0})
+        
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -1155,6 +1178,12 @@ def catacomb_radar():
     try:
         import sqlite3
         import json
+        
+        # Check if database exists
+        if not os.path.exists(DB_PATH):
+            logger.warning(f"Database not found at {DB_PATH}, returning empty radar")
+            return jsonify({"data": {"records": []}, "total": 0})
+        
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -1718,6 +1747,18 @@ def api_v1_dashboard_summary():
     """Real-time dashboard summary."""
     try:
         import sqlite3
+        
+        # Check if database exists
+        if not os.path.exists(DB_PATH):
+            logger.warning(f"Database not found at {DB_PATH}, returning zero summary")
+            return jsonify({
+                "total_interventions": 0,
+                "verified_interventions": 0,
+                "total_assets": 0,
+                "total_developers": 0,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
