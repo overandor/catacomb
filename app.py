@@ -256,8 +256,19 @@ CACHE_TTL = 300  # 5 minutes
 # Thread pool for concurrent repo analysis
 _executor = ThreadPoolExecutor(max_workers=4)
 
-# CollateralOps persistence layer
-collateral_registry = CollateralRegistry()
+# CollateralOps persistence layer (lazy init for serverless safety)
+_collateral_registry = None
+
+def _get_collateral_registry():
+    global _collateral_registry
+    if _collateral_registry is None:
+        try:
+            from collateral_registry import CollateralRegistry
+            _collateral_registry = CollateralRegistry()
+        except Exception as e:
+            logger.warning(f"Could not initialize collateral_registry: {e}")
+            _collateral_registry = None
+    return _collateral_registry
 
 
 class User:
