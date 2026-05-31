@@ -32,7 +32,19 @@ from collateral_packet import RiskRegister
 from lender_packet import LenderPacketGenerator
 from buyer_packet import BuyerPacketGenerator
 from developer_asset_underwriter import DeveloperAssetUnderwriter
-from proof_of_inference import get_proof_sdk
+
+# Lazy import proof_of_inference to prevent import errors
+_proof_sdk = None
+def get_proof_sdk():
+    global _proof_sdk
+    if _proof_sdk is None:
+        try:
+            from proof_of_inference import ProofOfInference
+            _proof_sdk = ProofOfInference()
+        except Exception as e:
+            logger.warning(f"Could not initialize proof_of_inference: {e}")
+            _proof_sdk = None
+    return _proof_sdk
 
 # Configure logging
 logging.basicConfig(
