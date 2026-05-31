@@ -1,0 +1,57 @@
+GIT COMMIT PROOF — Agent Labor Accounting Record
+==================================================
+Record ID:     ala-2026-05-30-cascade-wasm-001
+Repo:          overandor/membra-company-os
+Git Root:      /Users/alep/Downloads
+Branch:        main
+Commit Range:  6305bd9..395852a
+Tag:           dollarfs-v0.1.1
+
+VERIFIED COMMITS
+----------------
+6305bd9  feat(v1): production API endpoints + proof of inference
+395852a  DollarFS v0.1.1 — Anti-Inflation + Streaming Hash Security Patch
+
+AUTHORSHIP CLAIM
+----------------
+Primary agent:  Cascade (Windsurf IDE / Claude)
+Human operator: overandor
+Session:        145 minutes
+Date:           2026-05-30
+
+FILES IN SCOPE
+--------------
+Created:
+  catacomb/dollarfs_secure.py           (425 lines)
+  catacomb/tests/test_dollarfs_secure.py  (185 lines)
+  llm-mina-chain/web/wasm-e2e-test.html   (210 lines)
+  llm-mina-chain/web/test-wasm.mjs        (39 lines)
+
+Modified:
+  catacomb/underwriting_engine.py
+  language-platform/models.py
+  language-platform/app.py
+  language-platform/api_routes.py
+  language-platform/requirements.txt
+  hf-collateral-appraiser/README.md
+  llm-mina-chain/rust/src/wasm_worker.rs
+  llm-mina-chain/web/worker.js
+  llm-mina-chain/web/worker.html
+
+VERIFICATION COMMAND
+--------------------
+  cd /Users/alep/Downloads/02_AI_Agents/catacomb
+  git log --oneline 6305bd9..395852a
+  git show 395852a --stat
+  git verify-tag dollarfs-v0.1.1 2>/dev/null || echo "No GPG signature"
+
+HASH MANIFEST (sha256)
+----------------------
+  395852a — DollarFS v0.1.1 commit
+  This text file itself should be hashed and anchored for immutability.
+
+DISCLAIMER
+----------
+This commit proof is a self-reported record of agent activity.
+Independent verification (CI logs, build artifacts, deployment checks)
+is required before booking as capitalizable labor.

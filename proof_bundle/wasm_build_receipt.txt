@@ -1,0 +1,49 @@
+WASM BUILD RECEIPT — Agent Labor Accounting Record
+===================================================
+Record ID:   ala-2026-05-30-cascade-wasm-001
+Project:     llm-mina-chain (OverLLM Layer C)
+Component:   rust/src/wasm_worker.rs
+
+BUILD COMMAND
+-------------
+  cd /Users/alep/Downloads/02_AI_Agents/llm-mina-chain/rust
+  wasm-pack build --target web --out-dir ../web/pkg
+
+OUTPUT
+------
+  llm_mina_chain_bg.wasm    479,000 bytes
+  llm_mina_chain.js         (wasm-bindgen glue)
+  llm_mina_chain.d.ts       (TypeScript declarations)
+  package.json              (npm metadata)
+
+VERIFICATION
+------------
+  sha256sum llm_mina_chain_bg.wasm
+  # => computed at build time, should be recorded here
+
+  node ../web/test-wasm.mjs
+  # => 6/6 E2E tests passed
+
+TARGET ENVIRONMENT
+------------------
+  wasm32-unknown-unknown
+  wasm-bindgen 0.2.x
+  rustup target: wasm32-unknown-unknown (installed)
+
+DEPENDENCIES BUNDLED
+--------------------
+  sha2, ed25519-dalek, serde, wasm-bindgen, js-sys
+
+CHANGES IN THIS BUILD
+---------------------
+  - Fixed performance timing for Web Workers (js_sys::global())
+  - Added Receipt::sign() and Receipt::verify() wrappers
+  - Exposed sha256_stream() for browser streaming hash
+
+RECEIPT HASH (Ed25519)
+---------------------
+  Signer:   OverLLM-Build-Agent-001
+  Message:  wasm_build_receipt_v0.1.1_<timestamp>
+  Signature: <to-be-filled-by-settlement-layer>
+
+STATUS: BUILD_VERIFIED

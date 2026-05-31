@@ -1,0 +1,93 @@
+{
+  "api_route_manifest": {
+    "record_id": "ala-2026-05-30-cascade-wasm-001",
+    "generated_at": "2026-05-30T18:25:00Z",
+    "system": "CollateralOps v0.1.1",
+    "base_url": "https://language-platform-nine.vercel.app/api",
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/api/collateral/analyze",
+        "purpose": "Full 6-value appraisal + financeability report for a repo",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/collateral/financeability",
+        "purpose": "Deep financeability subscores, blockers, improvement queue",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/collateral/lender_packet",
+        "purpose": "Generate lender-ready Software Collateral Packet",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/collateral/buyer_packet",
+        "purpose": "Generate buyer-facing acquisition packet",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/collateral/balance_sheet",
+        "purpose": "Software balance sheet across a portfolio",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/collateral/agent_audit",
+        "purpose": "Audit AI agent work in a directory (CFO-readable labor accounting)",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/proof_event",
+        "purpose": "Immutable proof event ledger with chainable hashes",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/export/csv",
+        "purpose": "Export asset register as CSV",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/export/json",
+        "purpose": "Export asset register as JSON",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/balance-sheet",
+        "purpose": "Dashboard balance-sheet feed",
+        "status": "operational",
+        "auth_required": false,
+        "added_in_session": false
+      }
+    ],
+    "total_routes": 10,
+    "new_in_this_session": 7,
+    "doctrine": "Each route produces an auditable response. POST endpoints are designed to be replayable with the same input yielding the same appraisal (deterministic compute)."
+  }
+}

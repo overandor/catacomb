@@ -1,0 +1,57 @@
+TEST RESULTS — Agent Labor Accounting Record
+=============================================
+Record ID:  ala-2026-05-30-cascade-wasm-001
+Generated:  2026-05-30T18:25:00Z
+
+DOLLARFS SECURITY REGRESSION TESTS
+------------------------------------
+Suite:    tests/test_dollarfs_secure.py
+Command:  python3 tests/test_dollarfs_secure.py
+Result:   10 passed, 0 failed
+
+Test Coverage:
+  1. test_sparse_file_detection          PASSED
+  2. test_low_entropy_file_blocked       PASSED
+  3. test_trusted_source_file_valued     PASSED
+  4. test_untrusted_binary_capped         PASSED
+  5. test_blocked_pattern_filename        PASSED
+  6. test_streaming_hash_determinism      PASSED
+  7. test_directory_scan_limits           PASSED
+  8. test_secure_valuation_summary        PASSED
+  9. test_max_file_size_policy            PASSED
+  10. test_entropy_calculation             PASSED
+
+Key Assertion:
+  A 100MB sparse file produces $0 valuation.
+  A low-entropy repeated-byte file is risk-blocked.
+  A trusted .py file with real code gets a non-zero cap.
+
+WASM DETERMINISTIC COMPUTE E2E TESTS
+------------------------------------
+Suite:    llm-mina-chain/web/test-wasm.mjs
+Command:  node test-wasm.mjs
+Result:   6/6 passed
+
+Test Coverage:
+  1. SHA-256 streaming hash deterministic  PASSED
+  2. Ed25519 key generation + sign/verify   PASSED
+  3. Receipt serialization round-trip      PASSED
+  4. Block state replay consistency        PASSED
+  5. Worker task dispatch + receipt        PASSED
+  6. Performance timing within threshold   PASSED
+
+API SMOKE TESTS
+---------------
+Suite:    language-platform/tests/test_api.py
+Command:  pytest tests/test_api.py
+Result:   PASSED
+
+Build Verification:
+  - npm run build (vite): 157KB JS bundle, no errors
+  - cargo check --target wasm32-unknown-unknown: clean
+  - wasm-pack build --target web: 479KB .wasm output
+
+RISK NOTE
+---------
+Tests were run in the agent's local environment.
+CI/CD pipeline integration is pending for fully auditable builds.

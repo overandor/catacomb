@@ -1,0 +1,50 @@
+{
+  "deployment_status": {
+    "record_id": "ala-2026-05-30-cascade-wasm-001",
+    "generated_at": "2026-05-30T18:55:00Z",
+    "audit_event": "v0.1.1-deployment-debug-session",
+    "deployments": [
+      {
+        "platform": "Vercel",
+        "project": "language-platform",
+        "url": "https://language-platform-nine.vercel.app",
+        "status": "rate_limited_500_401",
+        "last_deploy": "2026-05-30T18:00:00Z",
+        "notes": "Public alias returned 500 FUNCTION_INVOCATION_FAILED. Alternate deployment returned 401 due to Deployment Protection / SSO. Daily deploy limit (>100/day) exceeded. Redeploys blocked for 24h. Codebase is locally fixed."
+      },
+      {
+        "platform": "Hugging Face Spaces",
+        "project": "hf-collateral-appraiser",
+        "url": "https://josephrw-collateral-appraiser.hf.space",
+        "status": "deployed_build_unverified",
+        "last_deploy": "2026-05-30T17:30:00Z",
+        "notes": "Initial deployment submitted. Build status unverified. HF token was exposed in session log and must be rotated immediately."
+      },
+      {
+        "platform": "Local Dev",
+        "project": "llm-mina-chain",
+        "url": "file:///Users/alep/Downloads/02_AI_Agents/llm-mina-chain/web/wasm-e2e-test.html",
+        "status": "verified_local",
+        "last_deploy": "2026-05-30T18:00:00Z",
+        "notes": "WASM E2E tests pass in local browser and Node. Not yet deployed to public CDN."
+      }
+    ],
+    "overall_readiness": "PARTIAL",
+    "blockers": [
+      "Vercel: daily deploy limit exceeded. Wait 24h or promote from dashboard.",
+      "Vercel: Deployment Protection / SSO returns 401. Disable in project settings or use team account.",
+      "Hugging Face: token exposed in log. Rotate immediately.",
+      "Hugging Face Space build needs verification after token rotation.",
+      "llm-mina-chain needs public IPFS or static host for WASM demo"
+    ],
+    "verification_commands": [
+      "curl -s https://language-platform-nine.vercel.app/api/balance-sheet | jq .",
+      "curl -s https://josephrw-collateral-appraiser.hf.space/health | jq .",
+      "node /Users/alep/Downloads/02_AI_Agents/llm-mina-chain/web/test-wasm.mjs"
+    ],
+    "security_actions_required": [
+      "Rotate Hugging Face token: Settings -> Access Tokens -> Revoke leaked token -> Create new token -> Update Space secret",
+      "Do not paste tokens into agent chat logs"
+    ]
+  }
+}
