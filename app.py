@@ -9,13 +9,11 @@ from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging BEFORE imports that might fail
+# Use StreamHandler only for Vercel serverless compatibility
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler('catacomb_api.log'),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
