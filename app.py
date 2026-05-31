@@ -7,10 +7,21 @@ import time
 from datetime import datetime
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Configure logging BEFORE imports that might fail
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler('catacomb_api.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 from flask import Flask, jsonify, request, send_from_directory, render_template, session, redirect, url_for
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from orchestrator import CatacombOrchestrator
 from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
 from repo_dataset import get_expanded_repos
 from universe_model import UniverseModel, UniverseTier
@@ -94,16 +105,6 @@ def get_proof_sdk():
             _proof_sdk = None
     return _proof_sdk
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler('catacomb_api.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -254,6 +255,7 @@ def get_orchestrator():
     """Get or create orchestrator instance."""
     global orchestrator
     if orchestrator is None:
+        from orchestrator import CatacombOrchestrator
         github_token = os.getenv("GITHUB_TOKEN")
         orchestrator = CatacombOrchestrator(github_token)
     return orchestrator
