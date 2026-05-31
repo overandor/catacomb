@@ -20,13 +20,55 @@ logger = logging.getLogger(__name__)
 from flask import Flask, jsonify, request, send_from_directory, render_template, session, redirect, url_for
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
-from repo_dataset import get_expanded_repos
-from universe_model import UniverseModel, UniverseTier
-from value_delta import ValueDeltaCalculator
-from ecosystem_kpis import EcosystemKPIs
-from oauth import init_oauth, get_oauth_manager, OAuthProvider
-from auth import verify_token, get_current_user, UserRole
+
+try:
+    from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
+except Exception as e:
+    logger.warning(f"Could not import outcome_ledger_v2: {e}")
+    OutcomeLedger = None
+    InterventionStatus = None
+    VerificationStatus = None
+
+try:
+    from repo_dataset import get_expanded_repos
+except Exception as e:
+    logger.warning(f"Could not import repo_dataset: {e}")
+    get_expanded_repos = None
+
+try:
+    from universe_model import UniverseModel, UniverseTier
+except Exception as e:
+    logger.warning(f"Could not import universe_model: {e}")
+    UniverseModel = None
+    UniverseTier = None
+
+try:
+    from value_delta import ValueDeltaCalculator
+except Exception as e:
+    logger.warning(f"Could not import value_delta: {e}")
+    ValueDeltaCalculator = None
+
+try:
+    from ecosystem_kpis import EcosystemKPIs
+except Exception as e:
+    logger.warning(f"Could not import ecosystem_kpis: {e}")
+    EcosystemKPIs = None
+
+try:
+    from oauth import init_oauth, get_oauth_manager, OAuthProvider
+except Exception as e:
+    logger.warning(f"Could not import oauth: {e}")
+    init_oauth = None
+    get_oauth_manager = None
+    OAuthProvider = None
+
+try:
+    from auth import verify_token, get_current_user, UserRole
+except Exception as e:
+    logger.warning(f"Could not import auth: {e}")
+    verify_token = None
+    get_current_user = None
+    UserRole = None
 
 try:
     from repo_valuation import RepoValuation
@@ -172,7 +214,11 @@ USE_POSTGRES = bool(DATABASE_URL)
 orchestrator = None
 
 # Global outcome ledger instance
-outcome_ledger = OutcomeLedger(db_path=DB_PATH, database_url=DATABASE_URL)
+if OutcomeLedger is not None:
+    outcome_ledger = OutcomeLedger(db_path=DB_PATH, database_url=DATABASE_URL)
+else:
+    outcome_ledger = None
+    logger.warning("OutcomeLedger not available, database features will be disabled")
 
 # Lazy numpy/sklearn-dependent modules
 _repo_valuation = None
