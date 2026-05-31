@@ -29,7 +29,10 @@ MAX_REPLACEMENT_COST = Decimal(os.getenv("COLLATERAL_MAX_REPL", "5000000"))
 MAX_AS_IS_VALUE = Decimal(os.getenv("COLLATERAL_MAX_ASIS", "2000000"))
 
 # Database
-COLLATERAL_DB_PATH = os.getenv("COLLATERAL_DB_PATH", "collateral_registry.db")
+if os.environ.get('VERCEL'):
+    COLLATERAL_DB_PATH = "/tmp/collateral_registry.db"
+else:
+    COLLATERAL_DB_PATH = os.getenv("COLLATERAL_DB_PATH", "collateral_registry.db")
 
 # Audit
 AGENT_CLEANUP_SCAFFOLD = Decimal(os.getenv("COLLATERAL_CLEANUP_SCAFFOLD", "15"))
