@@ -57,3 +57,4 @@ outcome_ledger.db
 # Temporary files
 *.tmp
 .vercel
+.env*
