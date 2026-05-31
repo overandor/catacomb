@@ -19,16 +19,67 @@ from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
 
-# Production imports
+try:
+    from repo_valuation import RepoValuation
+except Exception as e:
+    logger.warning(f"Could not import repo_valuation: {e}")
+    RepoValuation = None
+
+try:
+    from abandoned_repo_kpis import AbandonedRepoKPIs
+except Exception as e:
+    logger.warning(f"Could not import abandoned_repo_kpis: {e}")
+    AbandonedRepoKPIs = None
+
+try:
+    from intervention_predictor import get_predictor, InterventionFeatures
+except Exception as e:
+    logger.warning(f"Could not import intervention_predictor: {e}")
+    get_predictor = None
+    InterventionFeatures = None
+
+# Production imports (wrapped to prevent import errors)
 import re
 from decimal import Decimal
 from flask.json.provider import DefaultJSONProvider
-from collateral_registry import CollateralRegistry
-from asset_improvement_agent import AssetImprovementAgent, AssetRecord, AssetType
-from collateral_packet import RiskRegister
-from lender_packet import LenderPacketGenerator
-from buyer_packet import BuyerPacketGenerator
-from developer_asset_underwriter import DeveloperAssetUnderwriter
+
+try:
+    from collateral_registry import CollateralRegistry
+except Exception as e:
+    logger.warning(f"Could not import collateral_registry: {e}")
+    CollateralRegistry = None
+
+try:
+    from asset_improvement_agent import AssetImprovementAgent, AssetRecord, AssetType
+except Exception as e:
+    logger.warning(f"Could not import asset_improvement_agent: {e}")
+    AssetImprovementAgent = None
+    AssetRecord = None
+    AssetType = None
+
+try:
+    from collateral_packet import RiskRegister
+except Exception as e:
+    logger.warning(f"Could not import collateral_packet: {e}")
+    RiskRegister = None
+
+try:
+    from lender_packet import LenderPacketGenerator
+except Exception as e:
+    logger.warning(f"Could not import lender_packet: {e}")
+    LenderPacketGenerator = None
+
+try:
+    from buyer_packet import BuyerPacketGenerator
+except Exception as e:
+    logger.warning(f"Could not import buyer_packet: {e}")
+    BuyerPacketGenerator = None
+
+try:
+    from developer_asset_underwriter import DeveloperAssetUnderwriter
+except Exception as e:
+    logger.warning(f"Could not import developer_asset_underwriter: {e}")
+    DeveloperAssetUnderwriter = None
 
 # Lazy import proof_of_inference to prevent import errors
 _proof_sdk = None
@@ -132,21 +183,24 @@ _intervention_predictor = None
 def _get_repo_valuation():
     global _repo_valuation
     if _repo_valuation is None:
-        from repo_valuation import RepoValuation
+        if RepoValuation is None:
+            return None
         _repo_valuation = RepoValuation()
     return _repo_valuation
 
 def _get_kpi_calculator():
     global _kpi_calculator
     if _kpi_calculator is None:
-        from abandoned_repo_kpis import AbandonedRepoKPIs
+        if AbandonedRepoKPIs is None:
+            return None
         _kpi_calculator = AbandonedRepoKPIs()
     return _kpi_calculator
 
 def _get_predictor():
     global _intervention_predictor
     if _intervention_predictor is None:
-        from intervention_predictor import get_predictor
+        if get_predictor is None:
+            return None
         _intervention_predictor = get_predictor()
     return _intervention_predictor
 
