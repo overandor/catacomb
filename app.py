@@ -12,15 +12,12 @@ from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from orchestrator import CatacombOrchestrator
 from outcome_ledger_v2 import OutcomeLedger, InterventionStatus, VerificationStatus
-from repo_valuation import RepoValuation
-from abandoned_repo_kpis import AbandonedRepoKPIs
 from repo_dataset import get_expanded_repos
 from universe_model import UniverseModel, UniverseTier
 from value_delta import ValueDeltaCalculator
 from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
-from intervention_predictor import get_predictor, InterventionFeatures
 
 # Production imports
 import re
@@ -127,11 +124,31 @@ orchestrator = None
 # Global outcome ledger instance
 outcome_ledger = OutcomeLedger(db_path=DB_PATH, database_url=DATABASE_URL)
 
-# Global valuation instance
-repo_valuation = RepoValuation()
+# Lazy numpy/sklearn-dependent modules
+_repo_valuation = None
+_kpi_calculator = None
+_intervention_predictor = None
 
-# Global KPI calculator instance
-kpi_calculator = AbandonedRepoKPIs()
+def _get_repo_valuation():
+    global _repo_valuation
+    if _repo_valuation is None:
+        from repo_valuation import RepoValuation
+        _repo_valuation = RepoValuation()
+    return _repo_valuation
+
+def _get_kpi_calculator():
+    global _kpi_calculator
+    if _kpi_calculator is None:
+        from abandoned_repo_kpis import AbandonedRepoKPIs
+        _kpi_calculator = AbandonedRepoKPIs()
+    return _kpi_calculator
+
+def _get_predictor():
+    global _intervention_predictor
+    if _intervention_predictor is None:
+        from intervention_predictor import get_predictor
+        _intervention_predictor = get_predictor()
+    return _intervention_predictor
 
 # Cache for discovery results (5 minute TTL)
 discovery_cache = {}
@@ -529,7 +546,7 @@ def get_training_data():
 def train_prediction_model():
     """Train the intervention prediction model."""
     try:
-        predictor = get_predictor()
+        predictor = _get_predictor()
         success = predictor.train()
         
         if success:
@@ -558,7 +575,7 @@ def predict_intervention():
         intervention_type = data.get('intervention_type')
         planned_effort_days = data.get('planned_effort_days', 1)
         
-        predictor = get_predictor()
+        predictor = _get_predictor()
         prediction = predictor.predict_from_asset(
             asset_data,
             intervention_type,
@@ -582,7 +599,7 @@ def predict_intervention():
 def get_feature_importance():
     """Get feature importance from trained model."""
     try:
-        predictor = get_predictor()
+        predictor = _get_predictor()
         importance = predictor.get_feature_importance()
         
         return jsonify({
@@ -663,7 +680,7 @@ def get_valuation(owner, repo):
         if "error" in result:
             return jsonify({"error": result["error"]}), 404
         
-        valuation = repo_valuation.calculate_valuation(
+        valuation = _get_repo_valuation().calculate_valuation(
             result["repo_data"],
             result.get("analysis")
         )
@@ -710,7 +727,7 @@ def discover_quality_repos():
                 try:
                     result = future.result(timeout=30)  # 30 second timeout per repo
                     if "error" not in result:
-                        valuation = repo_valuation.calculate_valuation(
+                        valuation = _get_repo_valuation().calculate_valuation(
                             result["repo_data"],
                             result.get("analysis")
                         )
@@ -787,7 +804,7 @@ def discover_trending_repos():
                             (analysis.get("intervention_score", 0) / 100) * 0.1
                         )
                         
-                        valuation = repo_valuation.calculate_valuation(
+                        valuation = _get_repo_valuation().calculate_valuation(
                             repo_data,
                             analysis
                         )
