@@ -12,7 +12,7 @@ import os
 import jwt
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from functools import wraps
 from flask import request, jsonify, g
 from enum import Enum
