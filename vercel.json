@@ -10,6 +10,9 @@
       "use": "@vercel/static"
     }
   ],
+  "include": [
+    "outcome_ledger.db"
+  ],
   "routes": [
     {
       "src": "/api/(.*)",

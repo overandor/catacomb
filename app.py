@@ -103,6 +103,11 @@ def _safe_error_response(message: str, status_code: int = 500, log_exception: bo
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if os.environ.get('VERCEL'):
     DB_PATH = '/tmp/outcome_ledger.db'
+    # Copy local DB to /tmp if it exists (for Vercel deployment)
+    local_db = os.path.join(BASE_DIR, 'outcome_ledger.db')
+    if os.path.exists(local_db) and not os.path.exists(DB_PATH):
+        import shutil
+        shutil.copy(local_db, DB_PATH)
 else:
     DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
 
