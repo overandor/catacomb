@@ -105,16 +105,15 @@ if os.environ.get('VERCEL'):
 else:
     DB_PATH = os.path.join(BASE_DIR, 'outcome_ledger.db')
 
-# Ensure database directory exists
-DB_DIR = os.path.dirname(DB_PATH)
-if DB_DIR and not os.path.exists(DB_DIR):
-    os.makedirs(DB_DIR, exist_ok=True)
+# Use Postgres if DATABASE_URL is available
+DATABASE_URL = os.environ.get('DATABASE_URL')
+USE_POSTGRES = bool(DATABASE_URL)
 
 # Global orchestrator instance
 orchestrator = None
 
 # Global outcome ledger instance
-outcome_ledger = OutcomeLedger(db_path=DB_PATH)
+outcome_ledger = OutcomeLedger(db_path=DB_PATH, database_url=DATABASE_URL)
 
 # Global valuation instance
 repo_valuation = RepoValuation()
