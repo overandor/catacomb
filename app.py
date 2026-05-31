@@ -21,7 +21,6 @@ from ecosystem_kpis import EcosystemKPIs
 from oauth import init_oauth, get_oauth_manager, OAuthProvider
 from auth import verify_token, get_current_user, UserRole
 from intervention_predictor import get_predictor, InterventionFeatures
-from ecosystem_graph import get_ecosystem_graph
 
 # Production imports
 import re
@@ -590,6 +589,7 @@ def get_feature_importance():
 def get_ecosystem_stats():
     """Get ecosystem graph statistics."""
     try:
+        from ecosystem_graph import get_ecosystem_graph
         graph = get_ecosystem_graph()
         stats = graph.get_graph_stats()
         return jsonify(stats)
@@ -602,6 +602,7 @@ def get_ecosystem_stats():
 def get_related_assets(asset_id):
     """Get assets related to a given asset."""
     try:
+        from ecosystem_graph import get_ecosystem_graph
         graph = get_ecosystem_graph()
         max_depth = request.args.get('max_depth', 2, type=int)
         related = graph.get_related_assets(asset_id, max_depth=max_depth)
@@ -615,6 +616,7 @@ def get_related_assets(asset_id):
 def get_central_assets():
     """Get most central assets in the ecosystem."""
     try:
+        from ecosystem_graph import get_ecosystem_graph
         graph = get_ecosystem_graph()
         top_n = request.args.get('top_n', 10, type=int)
         central = graph.get_central_assets(top_n)
@@ -628,6 +630,7 @@ def get_central_assets():
 def get_communities():
     """Get communities in the ecosystem."""
     try:
+        from ecosystem_graph import get_ecosystem_graph
         graph = get_ecosystem_graph()
         communities = graph.get_communities()
         return jsonify({"communities": communities})
